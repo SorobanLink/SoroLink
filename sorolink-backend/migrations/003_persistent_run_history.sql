@@ -24,7 +24,7 @@ CREATE INDEX runs_report_expiry_idx ON runs (completed_at) WHERE completed_at IS
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'esure_application') THEN
-    GRANT SELECT, INSERT, UPDATE ON runs TO esure_application;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sorolink_application') THEN
+    GRANT SELECT, INSERT, UPDATE ON runs TO sorolink_application;
   END IF;
 END $$;

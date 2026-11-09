@@ -108,12 +108,12 @@ CREATE FUNCTION reject_scenario_version_mutation() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP = 'DELETE'
-     AND current_setting('esure.cleanup_mode', true) = 'on'
-     AND pg_has_role(current_user, to_regrole('esure_maintenance'), 'member')
+     AND current_setting('sorolink.cleanup_mode', true) = 'on'
+     AND pg_has_role(current_user, to_regrole('sorolink_maintenance'), 'member')
      AND OLD.created_at < clock_timestamp() - interval '30 days'
      AND EXISTS (SELECT 1 FROM scenarios WHERE id = OLD.scenario_id AND origin = 'anonymous_inline')
      AND NOT EXISTS (SELECT 1 FROM runs WHERE scenario_version_id = OLD.id) THEN
-    IF EXISTS (SELECT 1 FROM cleanup_audit WHERE cleanup_id::text = current_setting('esure.cleanup_id', true)
+    IF EXISTS (SELECT 1 FROM cleanup_audit WHERE cleanup_id::text = current_setting('sorolink.cleanup_id', true)
       AND action = 'delete_scenario_version' AND target_table = 'scenario_versions' AND target_id = OLD.id) THEN
       RETURN OLD;
     END IF;
@@ -125,11 +125,11 @@ $$;
 CREATE FUNCTION guard_run_cleanup() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
-  IF current_setting('esure.cleanup_mode', true) = 'on'
-     AND pg_has_role(current_user, to_regrole('esure_maintenance'), 'member')
+  IF current_setting('sorolink.cleanup_mode', true) = 'on'
+     AND pg_has_role(current_user, to_regrole('sorolink_maintenance'), 'member')
      AND OLD.status IN ('passed', 'failed', 'interrupted', 'cancelled')
      AND OLD.completed_at < clock_timestamp() - interval '30 days'
-     AND EXISTS (SELECT 1 FROM cleanup_audit WHERE cleanup_id::text = current_setting('esure.cleanup_id', true)
+     AND EXISTS (SELECT 1 FROM cleanup_audit WHERE cleanup_id::text = current_setting('sorolink.cleanup_id', true)
        AND action = 'delete_run' AND target_table = 'runs' AND target_id = OLD.id) THEN
     RETURN OLD;
   END IF;
@@ -140,12 +140,12 @@ $$;
 CREATE FUNCTION guard_scenario_cleanup() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
-  IF current_setting('esure.cleanup_mode', true) = 'on'
-     AND pg_has_role(current_user, to_regrole('esure_maintenance'), 'member')
+  IF current_setting('sorolink.cleanup_mode', true) = 'on'
+     AND pg_has_role(current_user, to_regrole('sorolink_maintenance'), 'member')
      AND OLD.origin = 'anonymous_inline'
      AND OLD.created_at < clock_timestamp() - interval '30 days'
      AND NOT EXISTS (SELECT 1 FROM scenario_versions WHERE scenario_id = OLD.id)
-     AND EXISTS (SELECT 1 FROM cleanup_audit WHERE cleanup_id::text = current_setting('esure.cleanup_id', true)
+     AND EXISTS (SELECT 1 FROM cleanup_audit WHERE cleanup_id::text = current_setting('sorolink.cleanup_id', true)
        AND action = 'delete_scenario' AND target_table = 'scenarios' AND target_id = OLD.id) THEN
     RETURN OLD;
   END IF;

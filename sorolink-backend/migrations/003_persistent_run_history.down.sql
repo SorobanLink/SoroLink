@@ -24,8 +24,8 @@ ALTER TABLE runs
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'esure_application') THEN
-    REVOKE UPDATE ON runs FROM esure_application;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sorolink_application') THEN
+    REVOKE UPDATE ON runs FROM sorolink_application;
   END IF;
 END $$;
 DELETE FROM schema_migrations WHERE version = 3 AND filename = '003_persistent_run_history.sql';
