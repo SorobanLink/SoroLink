@@ -1,5 +1,5 @@
 name: Bug report
-description: Report reproducible incorrect behavior in Esure
+description: Report reproducible incorrect behavior in SoroLink
 title: "bug: "
 labels: ["bug"]
 body:

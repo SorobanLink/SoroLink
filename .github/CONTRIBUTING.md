@@ -1,4 +1,4 @@
-# Contributing to Esure
+# Contributing to SoroLink
 
 Thank you for helping make Stellar development easier to test and understand.
 
@@ -32,7 +32,7 @@ work during time-boxed contribution campaigns.
 
 ## Engineering rules
 
-- Esure's MVP is restricted to Stellar Testnet.
+- SoroLink's MVP is restricted to Stellar Testnet.
 - Amounts are decimal strings, never floating-point values.
 - API and scenario schemas reject unknown properties.
 - The backend owns canonical API and scenario schemas.

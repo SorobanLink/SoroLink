@@ -1,8 +1,8 @@
-# Esure security policy
+# SoroLink security policy
 
 ## Supported versions
 
-Esure is pre-release software. Only the latest commit on `main` is currently
+SoroLink is pre-release software. Only the latest commit on `main` is currently
 supported with security fixes.
 
 ## Reporting a vulnerability

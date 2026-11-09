@@ -1,8 +1,8 @@
-# Esure
+# SoroLink
 
 **Test with confidence. Build on Stellar.**
 
-Esure is an open-source scenario testing toolkit for Stellar payments and,
+SoroLink is an open-source scenario testing toolkit for Stellar payments and,
 later, Soroban applications. It turns multi-step ledger flows into repeatable
 tests with readable execution reports.
 
@@ -10,16 +10,16 @@ tests with readable execution reports.
 
 | Repository | Purpose |
 | --- | --- |
-| `esure-frontend` | Scenario dashboard and execution reports |
-| `esure-backend` | Stellar Testnet scenario runner and API |
-| `esure-contracts` | Soroban test fixtures and contracts |
-| `esure-docs` | Product, architecture, API, and contributor documentation |
+| `sorolink-frontend` | Scenario dashboard and execution reports |
+| `sorolink-backend` | Stellar Testnet scenario runner and API |
+| `sorolink-contracts` | Soroban test fixtures and contracts |
+| `sorolink-docs` | Product, architecture, API, and contributor documentation |
 | `.github` | Shared organization standards and templates |
 
 ## Current scope
 
 The MVP tests classic Stellar payment flows on Testnet: XLM payments, issued
-assets, trustlines, expected failures, and balance assertions. Esure never uses
+assets, trustlines, expected failures, and balance assertions. SoroLink never uses
 real funds or stores generated secret keys.
 
 ## Contributing

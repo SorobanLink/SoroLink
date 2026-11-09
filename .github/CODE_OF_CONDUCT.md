@@ -2,7 +2,7 @@
 
 ## Our pledge
 
-We pledge to make participation in Esure a harassment-free experience for
+We pledge to make participation in SoroLink a harassment-free experience for
 everyone, regardless of age, body size, disability, ethnicity, sex
 characteristics, gender identity and expression, experience level, education,
 socioeconomic status, nationality, personal appearance, race, caste, color,
@@ -33,7 +33,7 @@ Project maintainers are responsible for clarifying and enforcing standards and
 may remove, edit, or reject contributions and participation that violate them.
 
 Report conduct concerns privately to the organization owners through the contact
-method published on the Esure GitHub organization. Reports will be reviewed
+method published on the SoroLink GitHub organization. Reports will be reviewed
 promptly, fairly, and with respect for the reporter's privacy and safety.
 
 ## Attribution
