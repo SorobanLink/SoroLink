@@ -5,15 +5,15 @@ import { readdirSync, statSync } from "node:fs";
 
 import { extname, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { validateScenarioDefinition } from "@esure/backend/src/scenario-schema.js";
-import { SCENARIO_LIMITS, ScenarioValidationError } from "@esure/backend/src/scenario-schema.js";
-import { parseScenario, prepareScenario, contentHash } from "@esure/backend/src/scenario-loader.js";
-import { createScenarioRegistry } from "@esure/backend/src/scenarios.js";
-import { StellarTestnetGateway } from "@esure/backend/src/stellar-gateway.js";
-import { SafeRunError } from "@esure/backend/src/errors.js";
+import { validateScenarioDefinition } from "@sorolink/backend/src/scenario-schema.js";
+import { SCENARIO_LIMITS, ScenarioValidationError } from "@sorolink/backend/src/scenario-schema.js";
+import { parseScenario, prepareScenario, contentHash } from "@sorolink/backend/src/scenario-loader.js";
+import { createScenarioRegistry } from "@sorolink/backend/src/scenarios.js";
+import { StellarTestnetGateway } from "@sorolink/backend/src/stellar-gateway.js";
+import { SafeRunError } from "@sorolink/backend/src/errors.js";
 import { parse as parseYaml } from "yaml";
-import type { ValidatedScenario } from "@esure/backend/src/domain.js";
-import type { LedgerExecution, LedgerExecutionOptions } from "@esure/backend/src/domain.js";
+import type { ValidatedScenario } from "@sorolink/backend/src/domain.js";
+import type { LedgerExecution, LedgerExecutionOptions } from "@sorolink/backend/src/domain.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Version resolution (#57)
@@ -27,7 +27,7 @@ export function resolveVersion(): string {
       if (existsSync(candidate)) {
         try {
           const pkg = JSON.parse(readFileSync(candidate, "utf8"));
-          if (pkg.name === "@esure/cli" && typeof pkg.version === "string") {
+          if (pkg.name === "@sorolink/cli" && typeof pkg.version === "string") {
             return pkg.version;
           }
         } catch {
@@ -95,18 +95,18 @@ function reportArgumentError(
 
 function showHelp(): void {
   console.log(`
-esure - Stellar Testnet scenario testing toolkit
+sorolink - Stellar Testnet scenario testing toolkit
 
 Usage:
-  esure list                                  List bundled scenarios
-  esure list --search <term>                  Filter scenarios by ID, name, or description
-  esure list --sort id                        Sort scenarios by ID
-  esure show <scenario-id>                    Show a bundled scenario definition
-  esure validate <file>                       Validate a scenario file
-  esure validate --stdin --format <format>    Validate a scenario from standard input
-  esure validate-directory <dir>              Validate scenario files in a directory
-  esure run <scenario-id>                     Run a bundled scenario
-  esure run <file>                            Run a scenario from file
+  sorolink list                                  List bundled scenarios
+  sorolink list --search <term>                  Filter scenarios by ID, name, or description
+  sorolink list --sort id                        Sort scenarios by ID
+  sorolink show <scenario-id>                    Show a bundled scenario definition
+  sorolink validate <file>                       Validate a scenario file
+  sorolink validate --stdin --format <format>    Validate a scenario from standard input
+  sorolink validate-directory <dir>              Validate scenario files in a directory
+  sorolink run <scenario-id>                     Run a bundled scenario
+  sorolink run <file>                            Run a scenario from file
 
 Options:
   --output <format>   Output format: human (default) or json
@@ -118,23 +118,23 @@ Options:
   --version           Show version information
 
 Examples:
-  esure list
-  esure list --search payment --sort id --output json
-  esure show xlm-payment
-  esure validate ./my-scenario.yaml
-  cat ./my-scenario.json | esure validate --stdin --format json
-  esure validate-directory ./scenarios
-  esure run xlm-payment
-  esure run ./my-scenario.yaml --output json
-  esure run xlm-payment --timeout-ms 30000
-  esure run-suite xlm-payment path-payment --fail-fast
+  sorolink list
+  sorolink list --search payment --sort id --output json
+  sorolink show xlm-payment
+  sorolink validate ./my-scenario.yaml
+  cat ./my-scenario.json | sorolink validate --stdin --format json
+  sorolink validate-directory ./scenarios
+  sorolink run xlm-payment
+  sorolink run ./my-scenario.yaml --output json
+  sorolink run xlm-payment --timeout-ms 30000
+  sorolink run-suite xlm-payment path-payment --fail-fast
 
-Documentation: https://github.com/Esureorg/Esure
+Documentation: https://github.com/SoroLinkorg/SoroLink
 `);
 }
 
 function showVersion(): void {
-  console.log(`esure v${VERSION}`);
+  console.log(`sorolink v${VERSION}`);
 }
 
 function parseCliArgs(): { command?: string; args: string[]; options: CliOptions } {
@@ -349,7 +349,7 @@ async function showCommand(scenarioId: string, options: CliOptions): Promise<num
     const registry = createScenarioRegistry();
     const found = registry.find(scenarioId);
     if (!found) {
-      throw new Error(`Bundled scenario "${scenarioId}" not found. Run "esure list" to see available scenarios.`);
+      throw new Error(`Bundled scenario "${scenarioId}" not found. Run "sorolink list" to see available scenarios.`);
     }
 
     const payload = {
@@ -417,10 +417,10 @@ export async function readStdinInput(limit: number, stdin: NodeJS.ReadableStream
 export async function validateStdinCommand(options: CliOptions, stdin: NodeJS.ReadStream = process.stdin): Promise<number> {
   try {
     if (!options.format) {
-      throw new Error("Missing required --format option. Usage: esure validate --stdin --format <json|yaml>");
+      throw new Error("Missing required --format option. Usage: sorolink validate --stdin --format <json|yaml>");
     }
     if (stdin.isTTY) {
-      throw new Error("stdin is a terminal; pipe a scenario definition, e.g. cat scenario.json | esure validate --stdin --format json");
+      throw new Error("stdin is a terminal; pipe a scenario definition, e.g. cat scenario.json | sorolink validate --stdin --format json");
     }
 
     const content = await readStdinInput(SCENARIO_LIMITS.definitionBytes, stdin);
@@ -542,7 +542,7 @@ async function runCommand(target: string, options: CliOptions): Promise<number> 
       const found = registry.find(target);
       if (!found) {
         throw new Error(
-          `Bundled scenario "${target}" not found. Run "esure list" to see available scenarios.`,
+          `Bundled scenario "${target}" not found. Run "sorolink list" to see available scenarios.`,
         );
       }
       scenario = found;
@@ -691,7 +691,7 @@ async function runSuiteCommand(
     }
   }
   if (invalid.length > 0) {
-    const msg = `Unknown bundled scenario IDs: ${invalid.join(", ")}. Run "esure list" to see available scenarios.`;
+    const msg = `Unknown bundled scenario IDs: ${invalid.join(", ")}. Run "sorolink list" to see available scenarios.`;
     if (options.output === "json") {
       console.error(JSON.stringify({ error: { message: msg } }));
     } else {
@@ -896,15 +896,15 @@ function generateCompletions(shell: "bash" | "zsh"): string {
   const optList = COMPLETION_OPTIONS.join(" ");
 
   if (shell === "zsh") {
-    return `#compdef esure
-# Esure CLI shell completion for zsh.
+    return `#compdef sorolink
+# SoroLink CLI shell completion for zsh.
 # Source this file or add it to your fpath to enable completions.
 
-_esure() {
+_sorolink() {
   local -a commands=(${quotedCommands})
   local -a options=(${quotedOptions})
 
-  if [[ \${words[1]} == "esure" ]]; then
+  if [[ \${words[1]} == "sorolink" ]]; then
     if (( CURRENT == 2 )); then
       _describe 'command' commands
     elif (( CURRENT > 2 )); then
@@ -913,11 +913,11 @@ _esure() {
   fi
 }
 
-_esure "$@"
+_sorolink "$@"
 `;
   }
 
-  return `_esure_complete() {
+  return `_sorolink_complete() {
   local cur prev opts cmds
   COMPREPLY=()
   cur="\${COMP_WORDS[COMP_CWORD]}"
@@ -931,7 +931,7 @@ _esure "$@"
   fi
 
   case "\${prev}" in
-    esure)
+    sorolink)
       COMPREPLY=( $(compgen -W "\${cmds}" -- \${cur}) 2>/dev/null )
       ;;
     run|validate|init)
@@ -943,8 +943,8 @@ _esure "$@"
   esac
 }
 
-complete -F _esure_complete esure
-complete -F _esure_complete ./esure 2>/dev/null || true
+complete -F _sorolink_complete sorolink
+complete -F _sorolink_complete ./sorolink 2>/dev/null || true
 `;
 }
 
@@ -952,7 +952,7 @@ async function completionsCommand(shell: string): Promise<number> {
   const normalized = shell.toLowerCase();
   if (normalized !== "bash" && normalized !== "zsh") {
     console.error(`Error: Unsupported shell "${shell}". Use "bash" or "zsh".`);
-    console.error('Usage: esure completions <bash|zsh>');
+    console.error('Usage: sorolink completions <bash|zsh>');
     return 1;
   }
   console.log(generateCompletions(normalized));
@@ -976,14 +976,14 @@ export async function main(): Promise<number> {
     case "list":
       if (args.length > 0) {
         console.error("Error: Unexpected argument(s) for list command");
-        console.error("Usage: esure list");
+        console.error("Usage: sorolink list");
         return 1;
       }
       return listCommand(options);
     case "show":
       if (args.length === 0) {
         console.error("Error: Missing scenario ID");
-        console.error('Usage: esure show <scenario-id>');
+        console.error('Usage: sorolink show <scenario-id>');
         return 1;
       }
       return showCommand(args[0], options);
@@ -993,27 +993,27 @@ export async function main(): Promise<number> {
       }
       if (args.length === 0) {
         console.error("Error: Missing file path argument");
-        console.error("Usage: esure validate <file> or esure validate --stdin --format <json|yaml>");
+        console.error("Usage: sorolink validate <file> or sorolink validate --stdin --format <json|yaml>");
         return 1;
       }
       return validateFileCommand(args[0], options);
     case "validate-directory":
       if (args.length === 0) {
         console.error("Error: Missing directory path");
-        console.error('Usage: esure validate-directory <directory>');
+        console.error('Usage: sorolink validate-directory <directory>');
         return 1;
       }
       return validateDirectoryCommand(args[0], options);
     case "run":
       if (options.file !== undefined && args.length > 0) {
         console.error("Error: Cannot specify both --file and a positional target");
-        console.error("Usage: esure run <scenario-id> | esure run <file> | esure run --file <file>");
+        console.error("Usage: sorolink run <scenario-id> | sorolink run <file> | sorolink run --file <file>");
         return 1;
       }
       if (options.file !== undefined) {
         if (!options.file.trim()) {
           console.error("Error: Missing file path for --file");
-          console.error("Usage: esure run --file <file>");
+          console.error("Usage: sorolink run --file <file>");
           return 1;
         }
         return runCommand(options.file, options, true);
@@ -1021,14 +1021,14 @@ export async function main(): Promise<number> {
       if (args.length === 0) {
         reportArgumentError(
           "Missing scenario ID or file path",
-          "Usage: esure run <scenario-id> or esure run <file>",
+          "Usage: sorolink run <scenario-id> or sorolink run <file>",
           options.output,
         );
         return 1;
       }
       if (args.length > 1) {
         console.error("Error: Unexpected argument(s) for run command");
-        console.error("Usage: esure run <scenario-id> or esure run <file>");
+        console.error("Usage: sorolink run <scenario-id> or sorolink run <file>");
         return 1;
       }
       return runCommand(args[0], options, false);
@@ -1036,7 +1036,7 @@ export async function main(): Promise<number> {
       if (args.length === 0) {
         reportArgumentError(
           "Missing scenario IDs",
-          "Usage: esure run-suite <id> [<id>...]",
+          "Usage: sorolink run-suite <id> [<id>...]",
           options.output,
         );
         return 1;
@@ -1045,7 +1045,7 @@ export async function main(): Promise<number> {
     case "completions":
       if (args.length === 0) {
         console.error('Error: Missing shell argument');
-        console.error('Usage: esure completions <bash|zsh>');
+        console.error('Usage: sorolink completions <bash|zsh>');
         return 1;
       }
       return completionsCommand(args[0]);
@@ -1054,7 +1054,7 @@ export async function main(): Promise<number> {
     default:
       reportArgumentError(
         `Unknown command "${command}"`,
-        'Run "esure --help" for usage information',
+        'Run "sorolink --help" for usage information',
         options.output,
       );
       return 1;
