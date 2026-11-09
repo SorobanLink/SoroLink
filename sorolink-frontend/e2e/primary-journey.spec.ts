@@ -329,7 +329,7 @@ test.describe("Loading States", () => {
     await expect(runButton).toContainText("Running…");
     await expect(page.locator(".running-row")).toBeVisible();
     await expect(page.locator(".running-row .spinner")).toBeVisible();
-    await expect(page.locator(".running-row")).toContainText("Esure is executing this flow on Stellar Testnet.");
+    await expect(page.locator(".running-row")).toContainText("SoroLink is executing this flow on Stellar Testnet.");
 
     // Verify in-progress report shows created timestamp but not completion info
     await expect(page.locator(".report-meta")).toContainText("CREATED");
@@ -457,7 +457,7 @@ test.describe("Failed Run and Error States", () => {
         body: JSON.stringify({
           error: {
             code: "BACKEND_UNAVAILABLE",
-            message: "Esure Backend is unavailable. Start it and try again.",
+            message: "SoroLink Backend is unavailable. Start it and try again.",
           },
         }),
       });
@@ -469,7 +469,7 @@ test.describe("Failed Run and Error States", () => {
     const errorBanner = page.locator(".empty-scenarios[role='alert']");
     await expect(errorBanner).toBeVisible();
     await expect(errorBanner).toContainText("Couldn't load scenarios");
-    await expect(errorBanner).toContainText("Esure Backend is unavailable. Start it and try again. (BACKEND_UNAVAILABLE)");
+    await expect(errorBanner).toContainText("SoroLink Backend is unavailable. Start it and try again. (BACKEND_UNAVAILABLE)");
 
     // Verify run button is disabled since no scenario could be selected
     await expect(page.locator(".launch-panel .run-button")).toBeDisabled();
