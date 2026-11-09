@@ -5,7 +5,7 @@ Command-line interface for running Stellar Testnet scenario tests.
 ## Installation
 
 ```bash
-cd esure-cli
+cd sorolink-cli
 npm ci
 npm run build
 ```
@@ -31,8 +31,8 @@ node ./dist/cli.js validate ./my-scenario.json
 ### Validate an archived JSON report offline
 
 ```bash
-npx esure report validate ./run-report.json
-npx esure report validate ./run-report.json --output json
+npx sorolink report validate ./run-report.json
+npx sorolink report validate ./run-report.json --output json
 ```
 
 This command reads at most 5 MiB, checks the backend's maintained run-report
@@ -64,11 +64,11 @@ node ./dist/cli.js run xlm-payment --output json
 ## Common Workflows
 
 The examples below assume the CLI has been built as described in
-[Installation](#installation), and commands are run from the `esure-cli`
+[Installation](#installation), and commands are run from the `sorolink-cli`
 directory.
 Each run executes against Stellar Testnet and may create temporary Testnet
 accounts. If running from the repository root instead, prefix the CLI path
-with `./esure-cli/`.
+with `./sorolink-cli/`.
 
 ### Run every bundled scenario in sequence
 
@@ -169,7 +169,7 @@ fi
 while IFS= read -r file; do
   [ -n "$file" ] || continue
   printf 'Validating %s\n' "$file"
-  node ./esure-cli/dist/cli.js validate "$file"
+  node ./sorolink-cli/dist/cli.js validate "$file"
 done <<EOF
 $files
 EOF
@@ -199,7 +199,7 @@ jobs:
           node-version: 20
       - name: Install ESURE CLI
         run: |
-          cd esure-cli
+          cd sorolink-cli
           npm ci
           npm run build
       - name: Run Stellar tests
@@ -220,7 +220,7 @@ Generated Testnet secrets remain ephemeral and are never persisted.
 
 ## Commands
 
-### `esure list`
+### `sorolink list`
 
 Lists all bundled scenarios available in ESURE.
 
@@ -228,7 +228,7 @@ Lists all bundled scenarios available in ESURE.
 
 - `--output json`: Output in JSON format
 
-### `esure validate <file>`
+### `sorolink validate <file>`
 
 Validates a scenario file without executing it.
 
@@ -245,7 +245,7 @@ Validates a scenario file without executing it.
 - `0`: Valid scenario
 - `1`: Invalid scenario or validation error
 
-### `esure report validate <file>`
+### `sorolink report validate <file>`
 
 Validates an archived JSON run report against the backend's maintained report
 contract without network access or scenario execution. Files larger than 5 MiB
@@ -258,7 +258,7 @@ are rejected.
 - `0`: Valid report
 - `1`: Invalid, unreadable, unsupported, or oversized report
 
-### `esure run <target>`
+### `sorolink run <target>`
 
 Executes a scenario on Stellar Testnet.
 
@@ -280,7 +280,7 @@ Executes a scenario on Stellar Testnet.
 
 When `--output json` is requested, argument errors and cancellation responses are emitted to `stderr` in a structured JSON error envelope (`{"error": {"code": "...", "message": "..."}}`).
 
-### `esure run-suite <id> [<id>...]`
+### `sorolink run-suite <id> [<id>...]`
 
 Runs multiple bundled scenarios sequentially.
 
@@ -293,7 +293,7 @@ Runs multiple bundled scenarios sequentially.
 
 ---
 
-### `esure completions <shell>`
+### `sorolink completions <shell>`
 
 Generate shell command completions for Bash or Zsh.
 
@@ -304,25 +304,25 @@ Generate shell command completions for Bash or Zsh.
 
 ```bash
 # Bash completion
-esure completions bash > /etc/bash_completion.d/esure
+sorolink completions bash > /etc/bash_completion.d/sorolink
 # or source in your shell:
-source <(esure completions bash)
+source <(sorolink completions bash)
 
 # Zsh completion
-esure completions zsh > /usr/local/share/zsh/site-functions/_esure
+sorolink completions zsh > /usr/local/share/zsh/site-functions/_sorolink
 # or source in your shell:
-source <(esure completions zsh)
+source <(sorolink completions zsh)
 ```
 
 ---
 
-### `esure doctor`
+### `sorolink doctor`
 
 Diagnose the local installation. Checks for the compiled CLI build artifact,
 the backend package, and a supported Node.js version.
 
 ```bash
-esure doctor
+sorolink doctor
 ```
 
 Exit code is `0` when all checks pass, `1` otherwise.

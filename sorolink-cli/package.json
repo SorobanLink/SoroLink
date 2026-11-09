@@ -1,5 +1,5 @@
 {
-  "name": "@esure/cli",
+  "name": "@sorolink/cli",
   "version": "0.1.0",
   "description": "Command-line interface for running Stellar Testnet scenarios",
   "private": true,
@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "bin": {
-    "esure": "./dist/cli.js"
+    "sorolink": "./dist/cli.js"
   },
   "files": [
     "dist"
@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@esure/backend": "file:../esure-backend",
+    "@sorolink/backend": "file:../sorolink-backend",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
