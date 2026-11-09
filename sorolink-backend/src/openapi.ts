@@ -27,7 +27,7 @@ const runRequestSchema = {
 export function openApiDocument() {
   return {
     openapi: "3.1.0",
-    info: { title: "Esure API", version: "1.0.0", description: "Bounded declarative Stellar Testnet scenario execution." },
+    info: { title: "SoroLink API", version: "1.0.0", description: "Bounded declarative Stellar Testnet scenario execution." },
     servers: [{ url: "/" }],
     paths: {
       "/health": { get: { operationId: "getHealth", responses: { "200": { description: "Healthy" } } } },

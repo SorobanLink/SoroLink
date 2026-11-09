@@ -43,7 +43,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   requireHttpsUrl("STELLAR_FRIENDBOT_URL", friendbotUrl);
 
   if (!horizonUrl.includes("testnet") || friendbotUrl !== "https://friendbot.stellar.org") {
-    throw new Error("Esure MVP is locked to the official Stellar Testnet services");
+    throw new Error("SoroLink MVP is locked to the official Stellar Testnet services");
   }
 
   const persistenceMode = env.PERSISTENCE_MODE ?? "disabled";

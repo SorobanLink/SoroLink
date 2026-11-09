@@ -30,7 +30,7 @@ export class Database {
       idleTimeoutMillis: config.databaseIdleTimeoutMs,
       statement_timeout: config.databaseQueryTimeoutMs,
       query_timeout: config.databaseQueryTimeoutMs,
-      application_name: "esure-backend",
+      application_name: "sorolink-backend",
       allowExitOnIdle: true,
     });
     this.pool.on("error", () => undefined);
@@ -59,7 +59,7 @@ export class Database {
   async close(): Promise<void> { await this.pool.end(); }
 }
 
-export async function runMigrations(database: Database, directory = resolve(process.cwd(), "migrations"), role?: "esure_migrations"): Promise<void> {
+export async function runMigrations(database: Database, directory = resolve(process.cwd(), "migrations"), role?: "sorolink_migrations"): Promise<void> {
   const files = await migrationFiles(directory);
   await database.transaction(async (client) => {
     if (role) await client.query(`SET LOCAL ROLE ${role}`);

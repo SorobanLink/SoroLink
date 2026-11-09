@@ -20,7 +20,7 @@ const resultCode = { type: "string", pattern: "^[a-z][a-z0-9_]{0,63}$", maxLengt
 const memo = { type: "string", maxLength: TEXT_MEMO_MAX_BYTES, description: "Text memo: at most 28 UTF-8 bytes (not characters), including empty text. The server also rejects malformed Unicode and enforces the byte limit." } as const;
 
 export const scenarioSchemaV1 = {
-  $id: "https://esure.dev/schemas/scenario-v1.json",
+  $id: "https://sorolink.dev/schemas/scenario-v1.json",
   type: "object",
   additionalProperties: false,
   required: ["schemaVersion", "id", "version", "name", "description", "network", "accounts", "assets", "steps", "assertions"],

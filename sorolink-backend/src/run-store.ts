@@ -151,8 +151,8 @@ export class PostgresRunStore implements RunStore {
    * Reads already hide reports past `retentionMs`; this operator-invoked method
    * removes the rows for real. Deletion goes through the database's audited
    * cleanup guard (`guard_run_cleanup`, migration 001): every batch runs in its
-   * own transaction as the `esure_maintenance` role with transaction-local
-   * `esure.cleanup_mode=on` and a fresh `esure.cleanup_id`, and writes a
+   * own transaction as the `sorolink_maintenance` role with transaction-local
+   * `sorolink.cleanup_mode=on` and a fresh `sorolink.cleanup_id`, and writes a
    * `cleanup_audit` row per deleted run before the DELETE executes. The guard
    * additionally enforces a hard 30-day floor, so a run is deleted only when it
    * is terminal (`passed`/`failed`), beyond the configured retention cutoff,
@@ -178,10 +178,10 @@ export class PostgresRunStore implements RunStore {
     let totalDeleted = 0;
     for (;;) {
       const deleted = await this.database.transaction(async (client) => {
-        await client.query("SET LOCAL ROLE esure_maintenance");
-        await client.query("SET LOCAL esure.cleanup_mode = 'on'");
+        await client.query("SET LOCAL ROLE sorolink_maintenance");
+        await client.query("SET LOCAL sorolink.cleanup_mode = 'on'");
         const cleanupId = randomUUID();
-        await client.query("SELECT set_config('esure.cleanup_id', $1, true)", [cleanupId]);
+        await client.query("SELECT set_config('sorolink.cleanup_id', $1, true)", [cleanupId]);
         const runIds = await selectExpiredRunIds(client, expiredRunPredicate, this.retentionMs, limit);
         if (runIds.length === 0) return 0;
         await client.query(

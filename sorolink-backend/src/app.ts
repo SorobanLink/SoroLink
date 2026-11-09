@@ -137,23 +137,23 @@ export function buildApp(options: BuildAppOptions): AppInstance {
     app.get("/metrics", async (_request, reply) => {
       const metrics = runs.getMetrics();
       const body = [
-        "# HELP esure_active_runs Number of currently admitted active runs.",
-        "# TYPE esure_active_runs gauge",
-        `esure_active_runs ${metrics.activeRuns}`,
-        "# HELP esure_terminal_runs_total Completed runs by fixed outcome.",
-        "# TYPE esure_terminal_runs_total counter",
-        `esure_terminal_runs_total{outcome="passed"} ${metrics.terminalRuns.passed}`,
-        `esure_terminal_runs_total{outcome="failed"} ${metrics.terminalRuns.failed}`,
-        "# HELP esure_rejected_run_starts_total Rejected starts by fixed reason.",
-        "# TYPE esure_rejected_run_starts_total counter",
-        `esure_rejected_run_starts_total{reason="capacity"} ${metrics.rejectedStarts.capacity}`,
-        `esure_rejected_run_starts_total{reason="draining"} ${metrics.rejectedStarts.draining}`,
-        "# HELP esure_run_duration_seconds Duration of terminal runs in seconds.",
-        "# TYPE esure_run_duration_seconds summary",
-        `esure_run_duration_seconds_sum ${metrics.runDuration.totalMilliseconds / 1_000}`,
-        "# HELP esure_run_duration_seconds_count Number of terminal runs included in duration.",
-        "# TYPE esure_run_duration_seconds_count counter",
-        `esure_run_duration_seconds_count ${metrics.runDuration.count}`,
+        "# HELP sorolink_active_runs Number of currently admitted active runs.",
+        "# TYPE sorolink_active_runs gauge",
+        `sorolink_active_runs ${metrics.activeRuns}`,
+        "# HELP sorolink_terminal_runs_total Completed runs by fixed outcome.",
+        "# TYPE sorolink_terminal_runs_total counter",
+        `sorolink_terminal_runs_total{outcome="passed"} ${metrics.terminalRuns.passed}`,
+        `sorolink_terminal_runs_total{outcome="failed"} ${metrics.terminalRuns.failed}`,
+        "# HELP sorolink_rejected_run_starts_total Rejected starts by fixed reason.",
+        "# TYPE sorolink_rejected_run_starts_total counter",
+        `sorolink_rejected_run_starts_total{reason="capacity"} ${metrics.rejectedStarts.capacity}`,
+        `sorolink_rejected_run_starts_total{reason="draining"} ${metrics.rejectedStarts.draining}`,
+        "# HELP sorolink_run_duration_seconds Duration of terminal runs in seconds.",
+        "# TYPE sorolink_run_duration_seconds summary",
+        `sorolink_run_duration_seconds_sum ${metrics.runDuration.totalMilliseconds / 1_000}`,
+        "# HELP sorolink_run_duration_seconds_count Number of terminal runs included in duration.",
+        "# TYPE sorolink_run_duration_seconds_count counter",
+        `sorolink_run_duration_seconds_count ${metrics.runDuration.count}`,
         "",
       ].join("\n");
       return reply
@@ -309,7 +309,7 @@ export function buildApp(options: BuildAppOptions): AppInstance {
     const run = await runs.get(request.params.runId);
     if (!run) return reply.code(404).send(apiError("RUN_NOT_FOUND", "The requested run does not exist.", request.id));
     if (run.status !== "passed" && run.status !== "failed") return reply.code(409).send(apiError("RUN_NOT_COMPLETE", "The requested run is not complete.", request.id));
-    reply.header("content-disposition", `attachment; filename=esure-run-${run.id}.json`);
+    reply.header("content-disposition", `attachment; filename=sorolink-run-${run.id}.json`);
     return sendConditionalRunReport(request, reply, withRetentionMetadata(run, options.config.runRetentionMs));
   });
 

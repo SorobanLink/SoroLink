@@ -27,7 +27,7 @@ export interface ScenarioVersionSummary {
  * affected scenario_id/version_number pair, compare the stored definition
  * against the bundled fixture (or an audited backup) to confirm it is
  * actually corrupt, and remove it through the audited maintenance path
- * (esure_maintenance role + cleanup_audit, see database/bootstrap-roles.sql)
+ * (sorolink_maintenance role + cleanup_audit, see database/bootstrap-roles.sql)
  * so reconciliation can re-publish a clean version from the bundled
  * fixture on the next run.
  */

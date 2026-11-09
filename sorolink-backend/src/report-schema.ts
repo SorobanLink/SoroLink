@@ -13,7 +13,7 @@ const jsonValue = {
 } as const;
 
 export const runReportSchemaV1 = {
-  $id: "https://esure.dev/schemas/run-report-v1.json",
+  $id: "https://sorolink.dev/schemas/run-report-v1.json",
   type: "object",
   additionalProperties: false,
   required: [
