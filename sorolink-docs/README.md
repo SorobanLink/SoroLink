@@ -1,6 +1,6 @@
-# Esure Docs
+# SoroLink Docs
 
-The documentation source for the Esure project.
+The documentation source for the SoroLink project.
 
 ## Product definition
 

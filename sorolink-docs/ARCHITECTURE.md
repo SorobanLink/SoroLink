@@ -1,4 +1,4 @@
-# Esure System Architecture
+# SoroLink System Architecture
 
 ## Context
 
@@ -7,17 +7,17 @@ Browser
    |
    | HTTPS / JSON
    v
-Esure Frontend
+SoroLink Frontend
    |
    | REST API
    v
-Esure Backend --------> PostgreSQL
+SoroLink Backend --------> PostgreSQL
    |
    +-------------------> Stellar Horizon / RPC
    |
    +-------------------> Friendbot (Testnet only)
 
-Future: Backend --------> Esure Soroban contracts
+Future: Backend --------> SoroLink Soroban contracts
 ```
 
 ## Components
@@ -44,7 +44,7 @@ secret keys must never be stored. See the [persistence guide](PERSISTENCE.md).
 ### Contracts
 
 Soroban execution is not part of the MVP runtime. The future contract-fixture
-design is a proposal in the [contracts repository](../esure-contracts/PROPOSAL.md);
+design is a proposal in the [contracts repository](../sorolink-contracts/PROPOSAL.md);
 it describes versioned WASM artifacts and interface metadata for a possible
 backend integration.
 

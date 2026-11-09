@@ -1,8 +1,8 @@
-# Esure MVP Specification
+# SoroLink MVP Specification
 
 ## Product statement
 
-Esure is an open-source testing and simulation toolkit that helps developers
+SoroLink is an open-source testing and simulation toolkit that helps developers
 verify Stellar payment flows before integrating them into production apps.
 
 ## Problem
@@ -12,7 +12,7 @@ account funding, asset issuance, trustlines, transactions, network responses,
 and manual verification. Protocol-level errors can also be difficult for new
 Stellar developers to understand.
 
-Esure turns those steps into repeatable scenarios and readable reports.
+SoroLink turns those steps into repeatable scenarios and readable reports.
 
 ## Primary user
 
@@ -27,13 +27,13 @@ and understandable failures.
 
 ## First end-to-end journey
 
-1. The user opens the Esure dashboard.
+1. The user opens the SoroLink dashboard.
 2. The user selects the `issued-asset-payment` scenario.
 3. The backend validates the scenario and starts a run.
-4. Esure creates and funds an issuer and recipient on Testnet.
+4. SoroLink creates and funds an issuer and recipient on Testnet.
 5. The recipient establishes a trustline to the issued asset.
 6. The issuer sends the asset to the recipient.
-7. Esure verifies the final balance.
+7. SoroLink verifies the final balance.
 8. The dashboard shows each step and a downloadable JSON report.
 
 ## Included
@@ -111,10 +111,10 @@ Stellar operations.
 
 | Repository | MVP responsibility |
 | --- | --- |
-| `esure-frontend` | Dashboard and browser tests |
-| `esure-backend` | Scenario validation, execution, reporting, and persistence |
-| `esure-contracts` | Post-MVP Soroban fixtures and their tests |
-| `esure-docs` | Product, architecture, API, and contributor documentation |
+| `sorolink-frontend` | Dashboard and browser tests |
+| `sorolink-backend` | Scenario validation, execution, reporting, and persistence |
+| `sorolink-contracts` | Post-MVP Soroban fixtures and their tests |
+| `sorolink-docs` | Product, architecture, API, and contributor documentation |
 | `.github` | Organization-wide community and workflow defaults |
 
 ## Working tagline
