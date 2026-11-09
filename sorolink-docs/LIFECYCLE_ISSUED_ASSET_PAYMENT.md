@@ -8,7 +8,7 @@ definition to a completed run on Stellar Testnet, and how the related
 
 The backend creates a temporary issuer and a temporary funded recipient. The
 recipient first creates a trustline for `TESTUSD`, the issuer sends `100
-TESTUSD`, and Esure then asserts that the recipient balance equals `100
+TESTUSD`, and SoroLink then asserts that the recipient balance equals `100
 TESTUSD`. The issuer is the account that defines the asset, so the payment
 originates from the issuing account once the recipient trustline exists.
 
@@ -30,8 +30,8 @@ flowchart LR
 | State | Meaning |
 |---|---|
 | `requested` | The run was accepted and queued. |
-| `validating` | Esure is validating the run before execution. |
-| `running` | Esure is executing the scenario steps in order. |
+| `validating` | SoroLink is validating the run before execution. |
+| `running` | SoroLink is executing the scenario steps in order. |
 | `passed` | Every step and assertion completed successfully. |
 | `failed` | A step failed or an assertion did not hold. |
 
@@ -59,7 +59,7 @@ scenario below covers what happens when that trustline is absent.
 
 ### 4. Verify the balance
 
-Esure runs the `balanceEquals` assertion and checks that the recipient balance
+SoroLink runs the `balanceEquals` assertion and checks that the recipient balance
 for `TESTUSD` is `100`.
 
 ## Missing trustline
@@ -68,7 +68,7 @@ The bundled `missing-trustline` scenario is the expected-failure companion to
 `issued-asset-payment`. It funds the same kinds of test accounts but omits the
 recipient `changeTrust` step, so the issuer's payment is expected to fail.
 
-Esure treats that failure as the correct outcome:
+SoroLink treats that failure as the correct outcome:
 
 - The `send-testusd` step is recorded as `passed` with the message
   `Payment failed as expected because the recipient has no trustline.`

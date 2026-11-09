@@ -29,13 +29,13 @@ jobs:
           node-version: 20
 
       - name: Install ESURE CLI
-        working-directory: ./esure-cli
+        working-directory: ./sorolink-cli
         run: |
           npm ci
           npm run build
 
       - name: Run XLM payment scenario
-        run: npx esure run xlm-payment --output json
+        run: npx sorolink run xlm-payment --output json
 
   # Example 2: Run multiple scenarios with matrix strategy
   test-scenario-matrix:
@@ -58,13 +58,13 @@ jobs:
           node-version: 20
 
       - name: Install ESURE CLI
-        working-directory: ./esure-cli
+        working-directory: ./sorolink-cli
         run: |
           npm ci
           npm run build
 
       - name: Run scenario
-        run: npx esure run ${{ matrix.scenario }} --output json
+        run: npx sorolink run ${{ matrix.scenario }} --output json
 
   # Example 3: Validate and run custom scenario file
   test-custom-scenario:
@@ -80,7 +80,7 @@ jobs:
           node-version: 20
 
       - name: Install ESURE CLI
-        working-directory: ./esure-cli
+        working-directory: ./sorolink-cli
         run: |
           npm ci
           npm run build
@@ -88,7 +88,7 @@ jobs:
       - name: Validate custom scenario (if exists)
         run: |
           if [ -f ./tests/stellar-custom.yaml ]; then
-            npx esure validate ./tests/stellar-custom.yaml
+            npx sorolink validate ./tests/stellar-custom.yaml
           else
             echo "No custom scenario found, skipping"
           fi
@@ -96,7 +96,7 @@ jobs:
       - name: Run custom scenario (if exists)
         run: |
           if [ -f ./tests/stellar-custom.yaml ]; then
-            npx esure run ./tests/stellar-custom.yaml --output json
+            npx sorolink run ./tests/stellar-custom.yaml --output json
           else
             echo "No custom scenario found, skipping"
           fi
@@ -113,7 +113,7 @@ jobs:
           node-version: 20
 
       - name: Install ESURE CLI
-        working-directory: ./esure-cli
+        working-directory: ./sorolink-cli
         run: |
           npm ci
           npm run build
@@ -124,7 +124,7 @@ jobs:
           timeout_minutes: 2
           max_attempts: 3
           retry_wait_seconds: 10
-          command: npx esure run xlm-payment --output json
+          command: npx sorolink run xlm-payment --output json
 
   # Example 5: Save test results as artifacts
   test-with-artifacts:
@@ -138,7 +138,7 @@ jobs:
           node-version: 20
 
       - name: Install ESURE CLI
-        working-directory: ./esure-cli
+        working-directory: ./sorolink-cli
         run: |
           npm ci
           npm run build
@@ -146,8 +146,8 @@ jobs:
       - name: Run scenarios and save results
         run: |
           mkdir -p test-results
-          npx esure run xlm-payment --output json > test-results/xlm-payment.json || true
-          npx esure run issued-asset-payment --output json > test-results/issued-asset.json || true
+          npx sorolink run xlm-payment --output json > test-results/xlm-payment.json || true
+          npx sorolink run issued-asset-payment --output json > test-results/issued-asset.json || true
 
       - name: Upload test results
         if: always()
