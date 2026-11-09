@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "..");
-const docsDir = resolve(repoRoot, "..", "esure-docs");
+const docsDir = resolve(repoRoot, "..", "sorolink-docs");
 
 // Track all Markdown files and their headings
 const headingsByFile = new Map();

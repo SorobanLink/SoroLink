@@ -44,7 +44,7 @@ function extractInterfaceFields(content, interfaceName) {
 const frontendApiPath = resolve(
   backendDir,
   "..",
-  "esure-frontend",
+  "sorolink-frontend",
   "src",
   "lib",
   "api.ts"
@@ -205,7 +205,7 @@ if (errors > 0) {
   console.error(
     "\nTo fix: ensure backend domain.ts and frontend api.ts have matching types"
   );
-  console.error("Run: npm run build in esure-backend to regenerate types\n");
+  console.error("Run: npm run build in sorolink-backend to regenerate types\n");
   process.exit(1);
 } else {
   console.log("\nBrowser bundle will not acquire Node or database dependencies.");
