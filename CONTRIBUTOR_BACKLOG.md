@@ -24,7 +24,7 @@ See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for complete workflow details.
 
 **Difficulty**: Good first issue  
 **Area**: Testing, CLI  
-**Files**: `esure-cli/src/cli.ts`, `esure-cli/test/`
+**Files**: `sorolink-cli/src/cli.ts`, `sorolink-cli/test/`
 
 **Problem**:  
 The CLI package has no automated tests. This makes it risky to refactor or extend CLI commands without manual verification.
@@ -36,9 +36,9 @@ Developers using ESURE in CI pipelines depend on stable CLI behavior. Automated 
 Add unit tests for CLI commands: `list`, `validate`, and `run`. Mock file system and network calls. Verify exit codes, JSON output format, and error handling.
 
 **Acceptance criteria**:
-- [ ] Test `esure list` returns scenario catalog in human and JSON formats
-- [ ] Test `esure validate` accepts valid YAML/JSON and rejects invalid scenarios
-- [ ] Test `esure run` returns exit code 0 for passing scenarios, 1 for failures
+- [ ] Test `sorolink list` returns scenario catalog in human and JSON formats
+- [ ] Test `sorolink validate` accepts valid YAML/JSON and rejects invalid scenarios
+- [ ] Test `sorolink run` returns exit code 0 for passing scenarios, 1 for failures
 - [ ] Test `--output json` produces parseable JSON for all commands
 - [ ] Test CLI rejects Mainnet config and secret seeds
 - [ ] All tests pass in `npm test` without hitting live Testnet services
@@ -46,8 +46,8 @@ Add unit tests for CLI commands: `list`, `validate`, and `run`. Mock file system
 
 **Testing requirements**:
 - Use vitest for test runner (already configured)
-- Mock `@esure/backend` dependencies to avoid Testnet calls
-- Add tests to `esure-cli/test/cli.test.ts`
+- Mock `@sorolink/backend` dependencies to avoid Testnet calls
+- Add tests to `sorolink-cli/test/cli.test.ts`
 - Tests must run in CI without external dependencies
 
 **Out of scope**:
@@ -62,7 +62,7 @@ Add unit tests for CLI commands: `list`, `validate`, and `run`. Mock file system
 
 **Difficulty**: Medium  
 **Area**: Backend, Reliability  
-**Files**: `esure-backend/src/stellar-gateway.ts`
+**Files**: `sorolink-backend/src/stellar-gateway.ts`
 
 **Problem**:  
 Horizon API calls (transaction submission, account loading) fail immediately on transient network errors. Users see "Network unavailable" errors even when retrying would succeed.
@@ -84,7 +84,7 @@ Add bounded exponential backoff retry logic to Horizon API calls (similar to exi
 - [ ] Existing tests still pass
 
 **Testing requirements**:
-- Add tests to `esure-backend/test/stellar-gateway.test.ts`
+- Add tests to `sorolink-backend/test/stellar-gateway.test.ts`
 - Mock Horizon server returning 503, then 200
 - Verify retry count and final success/failure
 - Test that 400 errors do not retry
@@ -101,7 +101,7 @@ Add bounded exponential backoff retry logic to Horizon API calls (similar to exi
 
 **Difficulty**: Advanced  
 **Area**: Backend, Persistence  
-**Files**: `esure-backend/src/persistence.ts`, `esure-backend/migrations/`, `esure-backend/src/run-store.ts`
+**Files**: `sorolink-backend/src/persistence.ts`, `sorolink-backend/migrations/`, `sorolink-backend/src/run-store.ts`
 
 **Problem**:  
 Run execution history is stored in memory and lost on server restart. Users cannot review past run results or analyze failure patterns over time.
@@ -124,7 +124,7 @@ Extend PostgreSQL persistence layer to save sanitized run reports. Add migration
 - [ ] API response format unchanged (backward compatible)
 
 **Testing requirements**:
-- Add `esure-backend/test/postgres-run-store.integration.test.ts`
+- Add `sorolink-backend/test/postgres-run-store.integration.test.ts`
 - Test create, get, update, and expiration
 - Verify secrets are redacted before persistence
 - Test migration up and down
@@ -145,7 +145,7 @@ Extend PostgreSQL persistence layer to save sanitized run reports. Add migration
 
 **Difficulty**: Medium  
 **Area**: Scenarios, Stellar Integration  
-**Files**: `esure-backend/scenarios/path-payment.yaml`, `esure-docs/SCENARIOS.md`
+**Files**: `sorolink-backend/scenarios/path-payment.yaml`, `sorolink-docs/SCENARIOS.md`
 
 **Problem**:  
 ESURE supports only simple payments. Stellar's path payment operation (payment through multiple asset hops) is untested, but critical for DEX and liquidity applications.
@@ -157,7 +157,7 @@ Developers building DEX integrations or multi-asset wallets need to test path pa
 Create a path payment scenario: Alice pays Bob in USDC, but Alice only holds XLM. Payment routes through an XLM/USDC market maker. Verify Bob receives USDC.
 
 **Acceptance criteria**:
-- [ ] New scenario file `esure-backend/scenarios/path-payment.yaml`
+- [ ] New scenario file `sorolink-backend/scenarios/path-payment.yaml`
 - [ ] Scenario uses `pathPaymentStrictReceive` or `pathPaymentStrictSend` operation type
 - [ ] Scenario involves at least 3 accounts: sender, market maker, recipient
 - [ ] Path goes through at least one intermediary asset (XLM → issued asset)
@@ -168,8 +168,8 @@ Create a path payment scenario: Alice pays Bob in USDC, but Alice only holds XLM
 
 **Testing requirements**:
 - Scenario must execute successfully on Stellar Testnet
-- Run `cd esure-backend && npm run check` to verify schema validation
-- Test scenario via CLI: `npx esure run path-payment`
+- Run `cd sorolink-backend && npm run check` to verify schema validation
+- Test scenario via CLI: `npx sorolink run path-payment`
 - Manually verify via dashboard
 
 **Out of scope**:
@@ -186,7 +186,7 @@ Create a path payment scenario: Alice pays Bob in USDC, but Alice only holds XLM
 
 **Difficulty**: Medium  
 **Area**: Scenarios, Stellar Integration  
-**Files**: `esure-backend/scenarios/create-offer.yaml`, `esure-docs/SCENARIOS.md`
+**Files**: `sorolink-backend/scenarios/create-offer.yaml`, `sorolink-docs/SCENARIOS.md`
 
 **Problem**:  
 ESURE has no scenarios testing Stellar's decentralized exchange (manage offers, passive offers, or trades). DEX developers cannot test orderbook interaction.
@@ -198,7 +198,7 @@ DEX builders, market makers, and trading applications need to test offer creatio
 Create a scenario where Alice creates a sell offer (100 USDC for XLM at 2:1 ratio), Bob creates a matching buy offer, trade executes, and both verify received assets.
 
 **Acceptance criteria**:
-- [ ] New scenario file `esure-backend/scenarios/create-offer.yaml`
+- [ ] New scenario file `sorolink-backend/scenarios/create-offer.yaml`
 - [ ] Scenario creates at least one offer using `manageBuyOffer` or `manageSellOffer`
 - [ ] Scenario involves 2+ accounts and 2+ assets
 - [ ] Assertions verify offer was created (check account offers via Horizon)
@@ -226,7 +226,7 @@ Create a scenario where Alice creates a sell offer (100 USDC for XLM at 2:1 rati
 
 **Difficulty**: Good first issue  
 **Area**: Scenarios, Stellar Integration  
-**Files**: `esure-backend/scenarios/data-entry-simple.yaml`, `esure-docs/SCENARIOS.md`
+**Files**: `sorolink-backend/scenarios/data-entry-simple.yaml`, `sorolink-docs/SCENARIOS.md`
 
 **Problem**:  
 ESURE scenarios don't test Stellar's `manageData` operation. Developers building apps that store key-value data on-chain cannot verify data entry behavior.
@@ -238,7 +238,7 @@ Applications using Stellar for data anchoring, identity, or metadata need to tes
 Create a scenario where an account writes a key-value pair using `manageData`, then verify the data exists on the account via assertions.
 
 **Acceptance criteria**:
-- [ ] New scenario file `esure-backend/scenarios/data-entry-simple.yaml`  
+- [ ] New scenario file `sorolink-backend/scenarios/data-entry-simple.yaml`  
 - [ ] Scenario uses `manageData` operation to set a key-value pair
 - [ ] Scenario uses 1 account and native XLM asset
 - [ ] Assertions verify data entry exists on account (may require new assertion type or external check)
@@ -248,7 +248,7 @@ Create a scenario where an account writes a key-value pair using `manageData`, t
 
 **Testing requirements**:
 - Execute scenario on Testnet
-- Verify via CLI: `npx esure run data-entry-simple`
+- Verify via CLI: `npx sorolink run data-entry-simple`
 - Backend tests pass: `npm run check`
 
 **Out of scope**:
@@ -267,7 +267,7 @@ Create a scenario where an account writes a key-value pair using `manageData`, t
 
 **Difficulty**: Medium  
 **Area**: Frontend, UX  
-**Files**: `esure-frontend/src/components/dashboard.tsx`, `esure-frontend/src/components/dashboard.test.tsx`
+**Files**: `sorolink-frontend/src/components/dashboard.tsx`, `sorolink-frontend/src/components/dashboard.test.tsx`
 
 **Problem**:  
 With 10+ scenarios in the catalog, users cannot filter by scenario type (XLM payment, trustline, failure). They must scroll through all scenarios.
@@ -294,7 +294,7 @@ Add client-side filter controls above scenario list. Filter by operation types: 
 - Test filtering by each category
 - Test "All" resets filter
 - Test empty results state
-- Run `npm run check` in esure-frontend
+- Run `npm run check` in sorolink-frontend
 
 **Out of scope**:
 - Search by scenario name
@@ -309,7 +309,7 @@ Add client-side filter controls above scenario list. Filter by operation types: 
 
 **Difficulty**: Good first issue  
 **Area**: Frontend, UX  
-**Files**: `esure-frontend/src/components/dashboard.tsx`, `esure-frontend/src/components/dashboard.test.tsx`
+**Files**: `sorolink-frontend/src/components/dashboard.tsx`, `sorolink-frontend/src/components/dashboard.test.tsx`
 
 **Problem**:  
 Users cannot easily copy run IDs or transaction hashes from the dashboard. They must manually select text, which is error-prone for long hex strings.
@@ -349,7 +349,7 @@ Add copy button next to run ID in report header and next to each transaction has
 
 **Difficulty**: Medium  
 **Area**: Frontend, UX  
-**Files**: `esure-frontend/src/components/dashboard.tsx`, `esure-frontend/src/components/dashboard.test.tsx`
+**Files**: `sorolink-frontend/src/components/dashboard.tsx`, `sorolink-frontend/src/components/dashboard.test.tsx`
 
 **Problem**:  
 Reports show run status but not when the run started, completed, or how long it took. Users cannot tell if a run is stalled or compare execution times.
@@ -391,7 +391,7 @@ Display created timestamp, completed timestamp, and calculated duration in repor
 
 **Difficulty**: Advanced  
 **Area**: Documentation, Architecture, Future Work  
-**Files**: `esure-contracts/PROPOSAL.md`
+**Files**: `sorolink-contracts/PROPOSAL.md`
 
 **Problem**:  
 ESURE supports Stellar classic operations but not Soroban smart contracts. The contracts directory exists but has no concrete design. Contributors don't know how to extend ESURE for Soroban.
@@ -403,7 +403,7 @@ Soroban is Stellar's smart contract platform. Developers building Soroban apps n
 Write a technical design proposal (not implementation) for how ESURE could test Soroban contracts. Address: contract deployment scenarios, contract invocation, event assertions, WASM artifact handling, and security boundaries.
 
 **Acceptance criteria**:
-- [ ] New file `esure-contracts/PROPOSAL.md` following template below
+- [ ] New file `sorolink-contracts/PROPOSAL.md` following template below
 - [ ] Proposal explains the testing problem Soroban developers face
 - [ ] Proposal describes at least 2 concrete scenario examples (e.g., deploy-token-contract, invoke-transfer)
 - [ ] Proposal addresses how WASM artifacts are handled (upload, reference, or inline)
@@ -449,7 +449,7 @@ Write a technical design proposal (not implementation) for how ESURE could test 
 
 **Testing requirements**:
 - No code implementation required
-- Markdown linting: run `npx markdownlint esure-contracts/PROPOSAL.md`
+- Markdown linting: run `npx markdownlint sorolink-contracts/PROPOSAL.md`
 
 **Out of scope**:
 - Soroban contract implementation
@@ -463,7 +463,7 @@ Write a technical design proposal (not implementation) for how ESURE could test 
 
 **Difficulty**: Good first issue  
 **Area**: Backend, Developer Experience  
-**Files**: `esure-backend/src/stellar-gateway.ts`, `esure-backend/src/errors.ts`
+**Files**: `sorolink-backend/src/stellar-gateway.ts`, `sorolink-backend/src/errors.ts`
 
 **Problem**:  
 When Horizon or Friendbot times out, users see generic "Network unavailable" errors. They don't know which service failed or whether to retry.
@@ -484,7 +484,7 @@ Improve error messages for network timeouts to specify which service failed (Fri
 - [ ] No change to error codes or API response structure
 
 **Testing requirements**:
-- Update tests in `esure-backend/test/stellar-gateway.test.ts`
+- Update tests in `sorolink-backend/test/stellar-gateway.test.ts`
 - Add tests for new error messages
 - Run `npm run check`
 
@@ -500,7 +500,7 @@ Improve error messages for network timeouts to specify which service failed (Fri
 
 **Difficulty**: Good first issue  
 **Area**: Documentation, CLI  
-**Files**: `esure-cli/README.md`, `esure-docs/CI_INTEGRATION.md`
+**Files**: `sorolink-cli/README.md`, `sorolink-docs/CI_INTEGRATION.md`
 
 **Problem**:  
 CLI README has basic usage but lacks real-world examples for common workflows (running multiple scenarios, parsing JSON output in scripts, handling failures).
@@ -512,13 +512,13 @@ Developers integrating ESURE into CI or scripts need copy-paste examples. Good e
 Add "Common Workflows" section to CLI README with 5+ practical examples: run all scenarios in loop, parse JSON output with jq, fail CI on assertion failure, save results to file, validate custom scenarios in pre-commit hook.
 
 **Acceptance criteria**:
-- [ ] New "Common Workflows" section added to `esure-cli/README.md`
+- [ ] New "Common Workflows" section added to `sorolink-cli/README.md`
 - [ ] At least 5 practical examples with working bash/shell code
 - [ ] Examples cover: looping scenarios, JSON parsing, exit code handling, file output, validation
 - [ ] Each example has brief explanation of when to use it
 - [ ] Examples use realistic scenario names from bundled scenarios
 - [ ] Examples tested on Linux/macOS (bash) and Windows (Git Bash)
-- [ ] Updated `esure-docs/CI_INTEGRATION.md` cross-links to CLI examples
+- [ ] Updated `sorolink-docs/CI_INTEGRATION.md` cross-links to CLI examples
 - [ ] No changes to CLI implementation code
 
 **Example workflows to include**:
@@ -531,7 +531,7 @@ Add "Common Workflows" section to CLI README with 5+ practical examples: run all
 **Testing requirements**:
 - Manually test each example command
 - Verify examples work on Windows Git Bash
-- Run `npx markdownlint esure-cli/README.md`
+- Run `npx markdownlint sorolink-cli/README.md`
 
 **Out of scope**:
 - New CLI features
