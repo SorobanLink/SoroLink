@@ -1,20 +1,20 @@
-# Esure Glossary
+# SoroLink Glossary
 
-Key terms for Stellar developers new to Esure and scenario-based testing.
+Key terms for Stellar developers new to SoroLink and scenario-based testing.
 
 ## Account concepts
 
 **Keypair**  
-A public-key cryptography pair: a private key (secret seed) for signing transactions and a public key (account ID) for identification. Esure generates fresh keypairs per run; the public key is used to create accounts on the ledger.
+A public-key cryptography pair: a private key (secret seed) for signing transactions and a public key (account ID) for identification. SoroLink generates fresh keypairs per run; the public key is used to create accounts on the ledger.
 
 **Account**  
 A Stellar ledger entry identified by a public key, created when an issuer or payer funds it through a transaction. Account creation is not automatic; the account must be explicitly funded or receive a payment operation before it exists on the ledger.
 
 **Generated account**  
-An account whose keypair is created by Esure at run time and funded through official Testnet Friendbot. Generated accounts exist only during that run and are isolated from previous or future runs.
+An account whose keypair is created by SoroLink at run time and funded through official Testnet Friendbot. Generated accounts exist only during that run and are isolated from previous or future runs.
 
 **Testnet Friendbot**  
-A Testnet-only service that funds newly generated accounts with 10,000 XLM. Esure uses Friendbot to bootstrap test accounts; production Mainnet has no equivalent.
+A Testnet-only service that funds newly generated accounts with 10,000 XLM. SoroLink uses Friendbot to bootstrap test accounts; production Mainnet has no equivalent.
 
 ## Asset concepts
 
@@ -39,7 +39,7 @@ A signed message to the Stellar network containing one or more operations and op
 A single action within a transaction: a payment, trustline creation, offer placement, or similar. Operations are ordered and executed sequentially within their transaction.
 
 **Memo**  
-Optional metadata attached to a transaction, limited to 28 UTF-8 bytes. Text memos are human-readable; Esure validates memo content and inclusion as part of scenario assertions.
+Optional metadata attached to a transaction, limited to 28 UTF-8 bytes. Text memos are human-readable; SoroLink validates memo content and inclusion as part of scenario assertions.
 
 **Payment**  
 An operation that transfers an amount of an asset (native or issued) from a sender to a recipient. The recipient must hold a trustline to the asset (unless it is XLM).
@@ -53,7 +53,7 @@ A single transaction containing multiple operations, executed atomically. Common
 ## Scenario and execution concepts
 
 **Scenario**  
-A bounded, declarative JSON/YAML definition of a multi-step Stellar test. Scenarios describe accounts, assets, operations, and assertions without executable code or credentials. Esure validates scenarios before execution.
+A bounded, declarative JSON/YAML definition of a multi-step Stellar test. Scenarios describe accounts, assets, operations, and assertions without executable code or credentials. SoroLink validates scenarios before execution.
 
 **Scenario schema version**  
 The version of the scenario definition format (currently schema v1). Schema changes are breaking; different versions are not mixed in one scenario.
@@ -121,7 +121,7 @@ Report content with secrets (private keys, seed phrases) and sensitive debugging
 Schema and syntactic checks performed on a scenario definition before any Testnet execution, ensuring the scenario is well-formed and references are resolved.
 
 **Live Testnet execution**  
-The phase where Esure submits transactions to the actual Stellar Testnet, creates accounts through Friendbot, and retrieves transaction results from Horizon.
+The phase where SoroLink submits transactions to the actual Stellar Testnet, creates accounts through Friendbot, and retrieves transaction results from Horizon.
 
 **Scenario catalogue**  
 An optional persistent store of published scenarios with version history, enabled when `PERSISTENCE_MODE=published` and PostgreSQL is configured.
@@ -130,7 +130,7 @@ An optional persistent store of published scenarios with version history, enable
 A scenario stored in the catalogue with a version number, available for repeated execution by ID and query.
 
 **Horizon**  
-Stellar's REST API for querying ledger state, transaction history, and account balances. Esure polls Horizon to confirm transactions and verify balances.
+Stellar's REST API for querying ledger state, transaction history, and account balances. SoroLink polls Horizon to confirm transactions and verify balances.
 
 **Ledger** or **Ledger sequence number**  
 The sequential number of a ledger close (block) on the Stellar network. Transaction confirmations include the ledger number in which they were applied.

@@ -1,4 +1,4 @@
-# Esure Scenario Schema v1
+# SoroLink Scenario Schema v1
 
 Scenario Schema v1 is a bounded, declarative JSON/YAML format for classic
 Stellar payment tests. Document order is execution order. Definitions contain
@@ -344,9 +344,9 @@ other operations are rejected. See the [Stellar memo protocol documentation](htt
 
 ```yaml
 steps:
-  - { id: pay, type: payment, from: sender, to: recipient, asset: xlm, amount: "10", memo: "Esure memo tracking" }
+  - { id: pay, type: payment, from: sender, to: recipient, asset: xlm, amount: "10", memo: "SoroLink memo tracking" }
 assertions:
-  - { type: transactionMemoEquals, step: pay, memo: "Esure memo tracking" }
+  - { type: transactionMemoEquals, step: pay, memo: "SoroLink memo tracking" }
 ```
 
 The bundled `payment-with-memo` fixture is version 2. Existing version 1
