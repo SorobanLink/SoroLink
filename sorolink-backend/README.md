@@ -1,6 +1,6 @@
-# Esure Backend
+# SoroLink Backend
 
-The API and scenario runner for Esure, an open-source testing toolkit for
+The API and scenario runner for SoroLink, an open-source testing toolkit for
 Stellar payments.
 
 ## Requirements
@@ -86,13 +86,13 @@ envelopes, and raw upstream responses are not logged.
 P2.0-P2.2 optionally persist only the published scenario catalogue. The default
 `PERSISTENCE_MODE=disabled` preserves the P1 path. Published mode is fail-closed
 and requires separately applied checksummed migrations and reconciled fixtures;
-see `../esure-docs/PERSISTENCE.md`.
+see `../sorolink-docs/PERSISTENCE.md`.
 
 Bundled scenarios are declarative files in `scenarios/`. Set
 `SCENARIO_DIRECTORY` to load additional bounded JSON/YAML definitions at startup,
 or submit a definition directly to `/api/v1/runs/definitions`. Definitions are
 validated before account generation or network access. See
-`../esure-docs/SCENARIOS.md` and `/openapi.json` for Schema v1 and API details.
+`../sorolink-docs/SCENARIOS.md` and `/openapi.json` for Schema v1 and API details.
 
 Run the opt-in live smoke test only when real Testnet access is intended:
 
