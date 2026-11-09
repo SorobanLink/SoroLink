@@ -21,11 +21,11 @@ steps:
     to: recipient
     asset: xlm
     amount: "10"
-    memo: "Esure memo tracking"
+    memo: "SoroLink memo tracking"
 assertions:
   - type: transactionMemoEquals
     step: send-xlm-with-memo
-    memo: "Esure memo tracking"
+    memo: "SoroLink memo tracking"
   - type: transactionConfirmed
     step: send-xlm-with-memo
   - type: balanceChangedBy

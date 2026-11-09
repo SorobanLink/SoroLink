@@ -1,6 +1,6 @@
 # Bounded in-memory stores benchmark
 
-From `esure-backend`, after `npm ci`:
+From `sorolink-backend`, after `npm ci`:
 
 ```sh
 npm run bench:stores -- 833 20
