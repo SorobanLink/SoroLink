@@ -1,28 +1,28 @@
-# Esure
+# SoroLink
 
-[![Monorepo CI](https://github.com/Esureorg/Esure/actions/workflows/ci.yml/badge.svg)](https://github.com/Esureorg/Esure/actions/workflows/ci.yml)
+[![Monorepo CI](https://github.com/SoroLinkorg/SoroLink/actions/workflows/ci.yml/badge.svg)](https://github.com/SoroLinkorg/SoroLink/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Stellar: Testnet](https://img.shields.io/badge/Stellar-Testnet-7C3AED)](https://developers.stellar.org/docs/networks/testnet)
 
 **Test with confidence. Build on Stellar.**
 
-Esure is an open-source testing and simulation toolkit that helps developers
+SoroLink is an open-source testing and simulation toolkit that helps developers
 validate Stellar payment flows before integrating them into production
 applications. It turns multi-step Testnet operations into repeatable scenarios
 with structured reports, transaction links, balance changes, and readable
 failure explanations.
 
 > [!IMPORTANT]
-> Esure is an MVP built exclusively for Stellar Testnet. It must not be used for
+> SoroLink is an MVP built exclusively for Stellar Testnet. It must not be used for
 > Mainnet transactions or real-value assets.
 
 ## Live services
 
 | Service | URL |
 | --- | --- |
-| Web dashboard | [esure-testnet.vercel.app](https://esure-testnet.vercel.app) |
-| Backend health | [esure.onrender.com/health](https://esure.onrender.com/health) |
-| OpenAPI document | [esure.onrender.com/openapi.json](https://esure.onrender.com/openapi.json) |
+| Web dashboard | [sorolink-testnet.vercel.app](https://sorolink-testnet.vercel.app) |
+| Backend health | [sorolink.onrender.com/health](https://sorolink.onrender.com/health) |
+| OpenAPI document | [sorolink.onrender.com/openapi.json](https://sorolink.onrender.com/openapi.json) |
 
 The Render free service may sleep after inactivity, so its first response can
 take longer than subsequent requests.
@@ -41,18 +41,18 @@ take longer than subsequent requests.
 - **Security by Design**: Testnet-only, rejects secrets/Mainnet, ephemeral keys, sanitized outputs
 - **Optional Persistence**: PostgreSQL-backed scenario catalogue and version history
 
-See the [MVP specification](esure-docs/MVP.md) for the complete product scope.
+See the [MVP specification](sorolink-docs/MVP.md) for the complete product scope.
 
-## Why Esure
+## Why SoroLink
 
 A realistic Stellar payment test spans account creation, Friendbot funding,
 trustline configuration, transaction submission, ledger confirmation, and
 balance verification. Rebuilding that flow manually makes failures difficult to
-reproduce and easy to misdiagnose. Esure packages the full process into
+reproduce and easy to misdiagnose. SoroLink packages the full process into
 versioned scenarios that can be executed repeatedly and inspected through one
 consistent report format.
 
-Esure is useful for:
+SoroLink is useful for:
 
 - payment and remittance teams validating integration assumptions;
 - wallet developers testing asset and trustline behavior;
@@ -60,13 +60,13 @@ Esure is useful for:
 - contributors reproducing protocol-level failures safely on Testnet; and
 - CI workflows that need deterministic validation without storing secret keys.
 
-## How Esure differs
+## How SoroLink differs
 
-Unlike Stellar Lab, which requires manual step-through and copy/paste workflow, Esure executes multi-step flows declaratively and generates structured reports. Unlike the Stellar Quickstart Docker image, Esure focuses on scenario-driven testing rather than node operation. Unlike hand-written SDK tests, Esure provides repeatable scenario definitions with expected-failure assertions and CI-friendly JSON output.
+Unlike Stellar Lab, which requires manual step-through and copy/paste workflow, SoroLink executes multi-step flows declaratively and generates structured reports. Unlike the Stellar Quickstart Docker image, SoroLink focuses on scenario-driven testing rather than node operation. Unlike hand-written SDK tests, SoroLink provides repeatable scenario definitions with expected-failure assertions and CI-friendly JSON output.
 
 ## Bundled scenarios
 
-Esure includes 13 bundled scenarios for Testnet integration testing:
+SoroLink includes 13 bundled scenarios for Testnet integration testing:
 
 | Scenario | Purpose | Expected result |
 | --- | --- | --- |
@@ -84,7 +84,7 @@ Esure includes 13 bundled scenarios for Testnet integration testing:
 | `minimum-xlm-payment` | Send minimum viable XLM amount (1 stroop = 0.0000001 XLM) | Pass |
 
 Each run generates fresh Testnet accounts, so repeated executions remain
-isolated from previous runs. See [SCENARIOS.md](esure-docs/SCENARIOS.md) for
+isolated from previous runs. See [SCENARIOS.md](sorolink-docs/SCENARIOS.md) for
 complete scenario documentation.
 
 ## How a run works
@@ -118,15 +118,15 @@ Stellar Testnet      PostgreSQL (optional)
 
 | Directory | Responsibility |
 | --- | --- |
-| [`esure-frontend`](esure-frontend) | Next.js dashboard and browser-facing API proxy |
-| [`esure-backend`](esure-backend) | Fastify API, validation, reporting, and Testnet execution |
-| [`esure-cli`](esure-cli) | Command-line interface for terminal and CI usage |
-| [`esure-docs`](esure-docs) | Product, API, architecture, scenario, CI, and persistence documentation |
-| [`esure-contracts`](esure-contracts) | Design space for post-MVP Soroban fixtures |
+| [`sorolink-frontend`](sorolink-frontend) | Next.js dashboard and browser-facing API proxy |
+| [`sorolink-backend`](sorolink-backend) | Fastify API, validation, reporting, and Testnet execution |
+| [`sorolink-cli`](sorolink-cli) | Command-line interface for terminal and CI usage |
+| [`sorolink-docs`](sorolink-docs) | Product, API, architecture, scenario, CI, and persistence documentation |
+| [`sorolink-contracts`](sorolink-contracts) | Design space for post-MVP Soroban fixtures |
 | [`.github`](.github) | CI, issue templates, contribution guidance, and security policy |
 
 For deeper technical context, read the
-[architecture documentation](esure-docs/ARCHITECTURE.md).
+[architecture documentation](sorolink-docs/ARCHITECTURE.md).
 
 ## Quick start
 
@@ -140,12 +140,12 @@ For deeper technical context, read the
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/Esureorg/Esure.git
-cd Esure
+git clone https://github.com/SoroLinkorg/SoroLink.git
+cd SoroLink
 
-cd esure-backend
+cd sorolink-backend
 npm ci
-cd ../esure-frontend
+cd ../sorolink-frontend
 npm ci
 cd ..
 ```
@@ -155,26 +155,26 @@ cd ..
 macOS and Linux:
 
 ```bash
-cp esure-backend/.env.example esure-backend/.env
-cp esure-frontend/.env.example esure-frontend/.env.local
+cp sorolink-backend/.env.example sorolink-backend/.env
+cp sorolink-frontend/.env.example sorolink-frontend/.env.local
 ```
 
 Windows PowerShell:
 
 ```powershell
-Copy-Item esure-backend/.env.example esure-backend/.env
-Copy-Item esure-frontend/.env.example esure-frontend/.env.local
+Copy-Item sorolink-backend/.env.example sorolink-backend/.env
+Copy-Item sorolink-frontend/.env.example sorolink-frontend/.env.local
 ```
 
 The frontend defaults to a backend at `http://127.0.0.1:3001`. To use another
-backend, set `ESURE_BACKEND_URL` in `esure-frontend/.env.local`.
+backend, set `ESURE_BACKEND_URL` in `sorolink-frontend/.env.local`.
 
 ### 3. Start the backend
 
 In the first terminal:
 
 ```bash
-cd esure-backend
+cd sorolink-backend
 npm run dev
 ```
 
@@ -190,7 +190,7 @@ curl http://127.0.0.1:3001/api/v1/scenarios
 In a second terminal:
 
 ```bash
-cd esure-frontend
+cd sorolink-frontend
 npm run dev
 ```
 
@@ -217,12 +217,12 @@ curl http://127.0.0.1:3001/api/v1/runs/RUN_ID/report
 > [!NOTE]
 > The CLI is not yet published to npm. Run it from source as shown below.
 
-Esure includes a command-line interface for terminal and CI pipeline usage:
+SoroLink includes a command-line interface for terminal and CI pipeline usage:
 
 ```bash
 # Clone and build the CLI (one time)
-git clone https://github.com/Esureorg/Esure.git
-cd Esure/esure-cli
+git clone https://github.com/SoroLinkorg/SoroLink.git
+cd SoroLink/sorolink-cli
 npm ci
 npm run build
 
@@ -253,23 +253,23 @@ node dist/cli.js run ./my-scenario.yaml --output json
 
 ### CI integration
 
-Add Esure to your CI pipeline:
+Add SoroLink to your CI pipeline:
 
 ```yaml
 # .github/workflows/stellar-tests.yml
-- name: Install Esure CLI
+- name: Install SoroLink CLI
   run: |
-    cd esure-cli
+    cd sorolink-cli
     npm ci
     npm run build
     
 - name: Run Stellar tests
   run: |
-    cd esure-cli
+    cd sorolink-cli
     node dist/cli.js run ./tests/payment-flow.yaml --output json
 ```
 
-See [CI_INTEGRATION.md](esure-docs/CI_INTEGRATION.md) for complete CI/CD integration
+See [CI_INTEGRATION.md](sorolink-docs/CI_INTEGRATION.md) for complete CI/CD integration
 guide with GitHub Actions, GitLab CI, and CircleCI examples.
 
 ## API overview
@@ -285,8 +285,8 @@ guide with GitHub Actions, GitLab CI, and CircleCI examples.
 | `GET` | `/api/v1/runs/:runId/report` | Download a structured report |
 
 The complete contract is available from the deployed
-[OpenAPI document](https://esure.onrender.com/openapi.json) and the
-[API documentation](esure-docs/API.md).
+[OpenAPI document](https://sorolink.onrender.com/openapi.json) and the
+[API documentation](sorolink-docs/API.md).
 
 ## Configuration reference
 
@@ -301,7 +301,7 @@ Restart the local frontend or redeploy it after changing `ESURE_BACKEND_URL`.
 ### Backend
 
 The accepted integer bounds are inclusive. Backend settings are derived from
-[`loadConfig`](esure-backend/src/config.ts) and take effect when the backend
+[`loadConfig`](sorolink-backend/src/config.ts) and take effect when the backend
 starts; restart it after changing them.
 
 | Variable | Default | Accepted value / bounds | Effect and applicability |
@@ -343,38 +343,38 @@ share `RATE_LIMIT_WINDOW_MS` and are process-local.
 for the one-shot migration commands, using the separate migration role; it does
 not require a backend restart because those commands read it when invoked.
 Replace credential placeholders with local or provider-managed credentials and
-never commit them. See [`esure-backend/.env.example`](esure-backend/.env.example)
-and the [persistence guide](esure-docs/PERSISTENCE.md) for setup details.
+never commit them. See [`sorolink-backend/.env.example`](sorolink-backend/.env.example)
+and the [persistence guide](sorolink-docs/PERSISTENCE.md) for setup details.
 
 ## Development and testing
 
 Run the same deterministic checks used by CI:
 
 ```bash
-cd esure-backend
+cd sorolink-backend
 npm run check
 npm run build
 
-cd ../esure-frontend
+cd ../sorolink-frontend
 npm run check
 ```
 
 Normal automated tests do not submit real transactions. The opt-in Testnet
-smoke test is documented in the [backend README](esure-backend/README.md).
+smoke test is documented in the [backend README](sorolink-backend/README.md).
 
 ## Persistence
 
 The default `PERSISTENCE_MODE=disabled` configuration keeps runtime state in
 memory. Published scenario catalogue persistence can be enabled with PostgreSQL
 after applying the checked migrations and configuring the required database
-roles. See the [persistence guide](esure-docs/PERSISTENCE.md) before enabling it.
+roles. See the [persistence guide](sorolink-docs/PERSISTENCE.md) before enabling it.
 
 ## Deployment
 
 | Component | Platform | Root directory |
 | --- | --- | --- |
-| Frontend | Vercel | `esure-frontend` |
-| Backend | Render | `esure-backend` |
+| Frontend | Vercel | `sorolink-frontend` |
+| Backend | Render | `sorolink-backend` |
 | Database | PostgreSQL provider | Not applicable |
 
 Set `ESURE_BACKEND_URL` in Vercel to the public Render backend origin. Keep
@@ -390,12 +390,12 @@ The Render free tier sleeps after 15 minutes of inactivity. To keep the backend 
 | Capability | Shipped in this checkout | Planned / proposal |
 | --- | --- | --- |
 | Testnet scenarios and reports | Bounded scenario validation, classic Stellar execution, expected-failure reporting, and dashboard reports are shipped. Mainnet is rejected. | Mainnet use is out of scope. |
-| Published scenario catalogue | Optional PostgreSQL catalogue with version history and migration checks; see the [persistence implementation](esure-backend/src/persistence.ts). | No additional catalogue phase is recorded. |
-| Run history | Reports are in memory by default. `RUN_PERSISTENCE_ENABLED=true` with `PERSISTENCE_MODE=published` opts into PostgreSQL report storage; see the [run stores](esure-backend/src/run-store.ts). | Durable run execution, worker leases, and recovery are planned in [#21](https://github.com/Esureorg/Esure/issues/21). |
-| Primary browser journey | Playwright covers scenario selection, run start, polling, and passed/failed reports in the [journey test](esure-frontend/e2e/primary-journey.spec.ts); the [monorepo workflow](.github/workflows/ci.yml) runs it. | No additional primary-journey work is recorded. |
-| Soroban contract testing | Not in the MVP execution path. | Design examples are proposals in [esure-contracts](esure-contracts/PROPOSAL.md). |
+| Published scenario catalogue | Optional PostgreSQL catalogue with version history and migration checks; see the [persistence implementation](sorolink-backend/src/persistence.ts). | No additional catalogue phase is recorded. |
+| Run history | Reports are in memory by default. `RUN_PERSISTENCE_ENABLED=true` with `PERSISTENCE_MODE=published` opts into PostgreSQL report storage; see the [run stores](sorolink-backend/src/run-store.ts). | Durable run execution, worker leases, and recovery are planned in [#21](https://github.com/SoroLinkorg/SoroLink/issues/21). |
+| Primary browser journey | Playwright covers scenario selection, run start, polling, and passed/failed reports in the [journey test](sorolink-frontend/e2e/primary-journey.spec.ts); the [monorepo workflow](.github/workflows/ci.yml) runs it. | No additional primary-journey work is recorded. |
+| Soroban contract testing | Not in the MVP execution path. | Design examples are proposals in [sorolink-contracts](sorolink-contracts/PROPOSAL.md). |
 
-Active work is tracked in [GitHub Issues](https://github.com/Esureorg/Esure/issues).
+Active work is tracked in [GitHub Issues](https://github.com/SoroLinkorg/SoroLink/issues).
 
 ## Troubleshooting
 
@@ -403,19 +403,19 @@ Active work is tracked in [GitHub Issues](https://github.com/Esureorg/Esure/issu
 
 The free Render backend can sleep after inactivity. Wait for the first request
 to wake the service, then retry. Check the
-[health endpoint](https://esure.onrender.com/health) if the delay continues.
+[health endpoint](https://sorolink.onrender.com/health) if the delay continues.
 
 ### The frontend cannot reach the backend
 
 Confirm that `ESURE_BACKEND_URL` contains the backend origin without a trailing
-API path, for example `https://esure.onrender.com`, and redeploy the frontend
+API path, for example `https://sorolink.onrender.com`, and redeploy the frontend
 after changing a Vercel environment variable.
 
 ### The backend fails readiness in published mode
 
 Published mode fails closed when `DATABASE_URL` is missing or migrations are
 stale. Apply the role bootstrap, migrations, and fixture reconciliation from the
-[persistence guide](esure-docs/PERSISTENCE.md), or return to
+[persistence guide](sorolink-docs/PERSISTENCE.md), or return to
 `PERSISTENCE_MODE=disabled` while developing without PostgreSQL.
 
 ### A live Testnet run fails during funding
@@ -426,7 +426,7 @@ retry with a new isolated run.
 
 ## Security
 
-Esure rejects secret seeds, raw XDR, scripts, arbitrary URLs, unresolved
+SoroLink rejects secret seeds, raw XDR, scripts, arbitrary URLs, unresolved
 references, unknown scenario properties, and Mainnet configuration. Generated
 Testnet secrets remain only in process memory during execution and are excluded
 from API responses, logs, and reports.
@@ -447,4 +447,4 @@ Contributions are welcome. Before opening a pull request:
 
 ## License
 
-Esure is released under the [MIT License](LICENSE).
+SoroLink is released under the [MIT License](LICENSE).
