@@ -112,7 +112,7 @@ Acceptance criteria:
 
 Acceptance criteria:
 
-- Known transaction and operation codes map to stable Esure error codes.
+- Known transaction and operation codes map to stable SoroLink error codes.
 - Missing-trustline reports the actual normalized ledger result.
 - Raw responses and secret material never reach the client.
 - Unit tests cover known and unknown error shapes.
@@ -160,7 +160,7 @@ Acceptance criteria:
 
 - Explains issuer, recipient, trustline, payment, and balance assertion.
 - Links to authoritative Stellar documentation.
-- Includes an Esure report example with synthetic identifiers.
+- Includes an SoroLink report example with synthetic identifiers.
 
 ## Contracts
 

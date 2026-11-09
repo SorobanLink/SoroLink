@@ -1,13 +1,13 @@
-# Esure CI Integration Guide
+# SoroLink CI Integration Guide
 
 > [!NOTE]
 > The CLI is not yet published to npm. These examples run it from source.
 
-The Esure CLI can be integrated into continuous integration pipelines to automatically
+The SoroLink CLI can be integrated into continuous integration pipelines to automatically
 test Stellar payment flows, trustline behavior, and transaction handling on Testnet.
 For copy-ready shell workflows—including suites, JSON parsing, report files, and
 pre-commit validation—see the CLI README's
-[Common Workflows](../esure-cli/README.md#common-workflows) section.
+[Common Workflows](../sorolink-cli/README.md#common-workflows) section.
 
 ## Quick Start
 
@@ -28,18 +28,18 @@ jobs:
       
       - name: Install ESURE
         run: |
-          cd esure-cli
+          cd sorolink-cli
           npm ci
           npm run build
       
       - name: Run Stellar scenario tests
         run: |
-          cd esure-cli && node dist/cli.js run xlm-payment --output json
+          cd sorolink-cli && node dist/cli.js run xlm-payment --output json
 ```
 
 ## Exit Codes
 
-Esure CLI returns proper exit codes for CI integration:
+SoroLink CLI returns proper exit codes for CI integration:
 
 - **0**: Success - All steps and assertions passed
 - **1**: Failure - One or more steps/assertions failed, validation error, or execution error
@@ -51,7 +51,7 @@ CI pipelines automatically fail when exit code is non-zero.
 Use `--output json` to get machine-readable results:
 
 ```bash
-cd esure-cli && node dist/cli.js run xlm-payment --output json
+cd sorolink-cli && node dist/cli.js run xlm-payment --output json
 ```
 
 ### Success Output
@@ -132,14 +132,14 @@ jobs:
         with:
           node-version: 20
       
-      - name: Install Esure CLI
-        working-directory: ./esure-cli
+      - name: Install SoroLink CLI
+        working-directory: ./sorolink-cli
         run: |
           npm ci
           npm run build
       
       - name: Run payment scenario
-        run: cd esure-cli && node dist/cli.js run xlm-payment
+        run: cd sorolink-cli && node dist/cli.js run xlm-payment
 ```
 
 ### Multiple Scenario Matrix
@@ -167,14 +167,14 @@ jobs:
         with:
           node-version: 20
       
-      - name: Install Esure CLI
-        working-directory: ./esure-cli
+      - name: Install SoroLink CLI
+        working-directory: ./sorolink-cli
         run: |
           npm ci
           npm run build
       
       - name: Run ${{ matrix.scenario }}
-        run: cd esure-cli && node dist/cli.js run ${{ matrix.scenario }} --output json
+        run: cd sorolink-cli && node dist/cli.js run ${{ matrix.scenario }} --output json
 ```
 
 ### Custom Scenarios Directory
@@ -194,8 +194,8 @@ jobs:
         with:
           node-version: 20
       
-      - name: Install Esure CLI
-        working-directory: ./esure-cli
+      - name: Install SoroLink CLI
+        working-directory: ./sorolink-cli
         run: |
           npm ci
           npm run build
@@ -204,7 +204,7 @@ jobs:
         run: |
           for scenario in tests/stellar/*.yaml; do
             echo "Testing $scenario..."
-            (cd esure-cli && node dist/cli.js run "../$scenario" --output json) || exit 1
+            (cd sorolink-cli && node dist/cli.js run "../$scenario" --output json) || exit 1
           done
 ```
 
@@ -225,14 +225,14 @@ jobs:
         with:
           node-version: 20
       
-      - name: Install Esure CLI
-        working-directory: ./esure-cli
+      - name: Install SoroLink CLI
+        working-directory: ./sorolink-cli
         run: |
           npm ci
           npm run build
       
       - name: Run scenarios and capture results
-        working-directory: ./esure-cli
+        working-directory: ./sorolink-cli
         run: |
           node dist/cli.js run xlm-payment --output json > ../payment-result.json
           node dist/cli.js run missing-trustline --output json > ../trustline-result.json
@@ -254,7 +254,7 @@ test-stellar:
   image: node:20
   stage: test
   script:
-    - cd esure-cli
+    - cd sorolink-cli
     - npm ci
     - npm run build
     - node dist/cli.js run xlm-payment --output json
@@ -277,14 +277,14 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install Esure CLI
+          name: Install SoroLink CLI
           command: |
-            cd esure-cli
+            cd sorolink-cli
             npm ci
             npm run build
       - run:
           name: Run Stellar tests
-          command: cd esure-cli && node dist/cli.js run xlm-payment --output json
+          command: cd sorolink-cli && node dist/cli.js run xlm-payment --output json
 
 workflows:
   test:
@@ -298,10 +298,10 @@ workflows:
 
 ```bash
 # Validate scenario first
-(cd esure-cli && node dist/cli.js validate ./scenario.yaml) || exit 1
+(cd sorolink-cli && node dist/cli.js validate ./scenario.yaml) || exit 1
 
 # Then run
-(cd esure-cli && node dist/cli.js run ./scenario.yaml)
+(cd sorolink-cli && node dist/cli.js run ./scenario.yaml)
 ```
 
 ### 2. Use Specific Scenario Files
@@ -342,24 +342,24 @@ Space out runs or use retry logic for Testnet service unavailability:
   with:
     timeout_minutes: 2
     max_attempts: 3
-    command: cd esure-cli && node dist/cli.js run ./scenario.yaml
+    command: cd sorolink-cli && node dist/cli.js run ./scenario.yaml
 ```
 
 ### 5. Fail Fast vs Continue
 
 **Fail Fast** (default):
 ```bash
-(cd esure-cli && node dist/cli.js run scenario1.yaml) && \
-(cd esure-cli && node dist/cli.js run scenario2.yaml) && \
-(cd esure-cli && node dist/cli.js run scenario3.yaml)
+(cd sorolink-cli && node dist/cli.js run scenario1.yaml) && \
+(cd sorolink-cli && node dist/cli.js run scenario2.yaml) && \
+(cd sorolink-cli && node dist/cli.js run scenario3.yaml)
 ```
 
 **Continue on Failure**:
 ```bash
 EXIT_CODE=0
-(cd esure-cli && node dist/cli.js run scenario1.yaml) || EXIT_CODE=1
-(cd esure-cli && node dist/cli.js run scenario2.yaml) || EXIT_CODE=1
-(cd esure-cli && node dist/cli.js run scenario3.yaml) || EXIT_CODE=1
+(cd sorolink-cli && node dist/cli.js run scenario1.yaml) || EXIT_CODE=1
+(cd sorolink-cli && node dist/cli.js run scenario2.yaml) || EXIT_CODE=1
+(cd sorolink-cli && node dist/cli.js run scenario3.yaml) || EXIT_CODE=1
 exit $EXIT_CODE
 ```
 
@@ -370,7 +370,7 @@ exit $EXIT_CODE
 ```bash
 #!/bin/bash
 
-RESULT=$(cd esure-cli && node dist/cli.js run xlm-payment --output json)
+RESULT=$(cd sorolink-cli && node dist/cli.js run xlm-payment --output json)
 STATUS=$(echo "$RESULT" | jq -r '.status')
 
 if [ "$STATUS" = "passed" ]; then
@@ -390,7 +390,7 @@ import { spawn } from 'child_process';
 
 async function runScenario(scenarioId) {
   return new Promise((resolve, reject) => {
-    const child = spawn('node', ['esure-cli/dist/cli.js', 'run', scenarioId, '--output', 'json'], {
+    const child = spawn('node', ['sorolink-cli/dist/cli.js', 'run', scenarioId, '--output', 'json'], {
       cwd: process.cwd() // Assumes repo root
     });
     let output = '';
@@ -449,14 +449,14 @@ try {
 **Symptom**: Exit code 1 before execution starts
 
 **Solution**:
-- Run `cd esure-cli && node dist/cli.js validate <file>` locally first
+- Run `cd sorolink-cli && node dist/cli.js validate <file>` locally first
 - Check scenario schema compliance
 - Ensure no Mainnet config, secrets, or URLs in scenarios
 
 ## Security Considerations
 
 - Never commit secret seeds to scenario files
-- Esure CLI rejects scenarios with secrets or Mainnet config
+- SoroLink CLI rejects scenarios with secrets or Mainnet config
 - Generated Testnet keys are ephemeral and not persisted
 - Scenario validation runs before any network access
 
@@ -470,5 +470,5 @@ try {
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/Esureorg/Esure/issues
-- Documentation: https://github.com/Esureorg/Esure/tree/main/esure-docs
+- GitHub Issues: https://github.com/SoroLinkorg/SoroLink/issues
+- Documentation: https://github.com/SoroLinkorg/SoroLink/tree/main/sorolink-docs
