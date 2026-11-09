@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Esure will be documented in this file.
+All notable changes to SoroLink will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2026-10-07
 
 ### Added
-- CLI package (`esure-cli`) for terminal and CI usage with commands: `list`, `validate`, `run`
+- CLI package (`sorolink-cli`) for terminal and CI usage with commands: `list`, `validate`, `run`
 - JSON output format for CLI (`--output json`) for CI integration
 - 7 new Testnet scenarios: insufficient-xlm-balance, payment-with-memo, multi-operation-transaction, trustline-limit-exceeded, trustline-already-exists, minimum-xlm-payment, basic-payment-with-checks
 - Stellar error interpretation system with 30+ error codes including plain-English explanations, causes, and suggestions
@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Error retryability detection based on Stellar error types
 
 ### Changed
-- Documentation consistently uses "Esure" product name throughout
+- Documentation consistently uses "SoroLink" product name throughout
 - CLI runs from source (not yet published to npm)
 - Error messages now include developer-friendly interpretations alongside technical codes
 
@@ -47,6 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ephemeral generated keys (never persisted)
 - Sanitized error messages
 
-[Unreleased]: https://github.com/Esureorg/Esure/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/Esureorg/Esure/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/Esureorg/Esure/releases/tag/v0.1.0
+[Unreleased]: https://github.com/SoroLinkorg/SoroLink/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/SoroLinkorg/SoroLink/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/SoroLinkorg/SoroLink/releases/tag/v0.1.0
