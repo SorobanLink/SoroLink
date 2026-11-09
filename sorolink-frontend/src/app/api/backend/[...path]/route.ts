@@ -33,7 +33,7 @@ async function forward(request: NextRequest, context: RouteContext, method: "GET
 
   if (!response) {
     return NextResponse.json(
-      { error: { code: "BACKEND_UNAVAILABLE", message: "Esure Backend is unavailable. Start it and try again." } },
+      { error: { code: "BACKEND_UNAVAILABLE", message: "SoroLink Backend is unavailable. Start it and try again." } },
       { status: 503 },
     );
   }

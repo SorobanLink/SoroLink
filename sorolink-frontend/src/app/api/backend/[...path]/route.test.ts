@@ -16,7 +16,7 @@ describe("backend proxy report downloads", () => {
       status: 200,
       headers: {
         "content-type": "application/json",
-        "content-disposition": "attachment; filename=esure-run-run-123.json",
+        "content-disposition": "attachment; filename=sorolink-run-run-123.json",
       },
     })));
 
@@ -25,6 +25,6 @@ describe("backend proxy report downloads", () => {
       { params: Promise.resolve({ path: ["api", "v1", "runs", "run-123", "report"] }) },
     );
     expect(response.status).toBe(200);
-    expect(response.headers.get("content-disposition")).toBe("attachment; filename=esure-run-run-123.json");
+    expect(response.headers.get("content-disposition")).toBe("attachment; filename=sorolink-run-run-123.json");
   });
 });

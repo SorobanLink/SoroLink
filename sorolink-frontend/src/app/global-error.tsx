@@ -20,7 +20,7 @@ export default function GlobalError({
           <p className="eyebrow">Something went wrong</p>
           <h1>We hit an unexpected snag.</h1>
           <p>
-            Esure could not complete this request. You can try again or return
+            SoroLink could not complete this request. You can try again or return
             to the home screen.
           </p>
           <div className="error-boundary__actions">

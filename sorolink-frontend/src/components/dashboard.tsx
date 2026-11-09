@@ -11,7 +11,7 @@ export type ScenarioFilter = "all" | "xlm" | "issued-asset" | "expected-failure"
 export type SortOrder = "name-asc" | "name-desc" | "id-asc";
 export type ReportFilter = "all" | "failed";
 
-const FAVORITES_STORAGE_KEY = "esure:favorite-scenarios";
+const FAVORITES_STORAGE_KEY = "sorolink:favorite-scenarios";
 
 function getFavorites(): Set<string> {
   try {
@@ -548,9 +548,9 @@ export function Dashboard() {
         {liveAnnouncement}
       </div>
       <header className="topbar shell">
-        <a className="brand" href="#top" aria-label="Esure home">
-          <img className="brand-mark" src="/esure-mark.svg" width="38" height="38" alt="" aria-hidden="true" />
-          <span>esure</span>
+        <a className="brand" href="#top" aria-label="SoroLink home">
+          <img className="brand-mark" src="/sorolink-mark.svg" width="38" height="38" alt="" aria-hidden="true" />
+          <span>sorolink</span>
         </a>
         <a className="docs-link" href="https://developers.stellar.org" target="_blank" rel="noreferrer">Docs <ArrowIcon /></a>
       </header>
@@ -568,7 +568,7 @@ export function Dashboard() {
             <div className="orbit orbit-one" />
             <div className="orbit orbit-two" />
             <div className="orbit orbit-three" />
-            <span className="orbit-core"><span className="core-pulse" /><img src="/esure-mark.svg" width="66" height="66" alt="" /></span>
+            <span className="orbit-core"><span className="core-pulse" /><img src="/sorolink-mark.svg" width="66" height="66" alt="" /></span>
             <i className="satellite one" />
             <i className="satellite two" />
             <i className="satellite three" />
@@ -982,7 +982,7 @@ function RunView({ run, reportFilter, scenarioName }: { run: RunReport; reportFi
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `esure-run-${run.id}.json`;
+      anchor.download = `sorolink-run-${run.id}.json`;
       document.body.appendChild(anchor);
       anchor.click();
       document.body.removeChild(anchor);
@@ -1043,7 +1043,7 @@ function RunView({ run, reportFilter, scenarioName }: { run: RunReport; reportFi
             Retention is not guaranteed; a report already loaded stays visible here.
           </p>
         )}
-        {!isTerminal && <div className="running-row"><span className="spinner" /><div><strong>{titleCase(run.status)}</strong><span>Esure is executing this flow on Stellar Testnet.</span></div></div>}
+        {!isTerminal && <div className="running-row"><span className="spinner" /><div><strong>{titleCase(run.status)}</strong><span>SoroLink is executing this flow on Stellar Testnet.</span></div></div>}
         {reportFilter === "failed" && visibleSteps.length === 0 && visibleAssertions.length === 0 && (
           <div className="empty-checks" role="status">
             <strong>No failed checks</strong>

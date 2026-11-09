@@ -6,7 +6,7 @@ const sans = Manrope({ subsets: ["latin"], variable: "--font-sans" });
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Esure — Stellar scenario testing",
+  title: "SoroLink — Stellar scenario testing",
   description: "Run repeatable Stellar Testnet payment scenarios and inspect every result.",
 };
 
