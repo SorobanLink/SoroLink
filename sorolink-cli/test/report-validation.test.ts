@@ -40,7 +40,7 @@ describe("CLI offline report validation (#156)", () => {
   let tempDir: string;
 
   beforeAll(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "esure-report-validation-"));
+    tempDir = await mkdtemp(join(tmpdir(), "sorolink-report-validation-"));
   });
 
   afterAll(async () => {

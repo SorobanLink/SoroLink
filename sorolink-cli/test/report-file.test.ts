@@ -14,7 +14,7 @@ describe("CLI terminal run report file (#59)", () => {
   let failingScenarioPath: string;
 
   beforeAll(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "esure-report-test-"));
+    tempDir = await mkdtemp(join(tmpdir(), "sorolink-report-test-"));
 
     validScenarioPath = join(tempDir, "valid-scenario.json");
     await writeFile(

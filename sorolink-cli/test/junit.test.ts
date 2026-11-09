@@ -48,7 +48,7 @@ describe("JUnit XML export (#60)", () => {
       ]);
 
       expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-      expect(xml).toContain('<testsuites name="esure" tests="2" failures="0" errors="0">');
+      expect(xml).toContain('<testsuites name="sorolink" tests="2" failures="0" errors="0">');
       expect(xml).toContain('<testsuite name="test-passing" tests="2" failures="0" errors="0">');
       expect(xml).toContain(
         '<testcase classname="test-passing" name="step pay: Payment confirmed" time="0"/>',
@@ -178,7 +178,7 @@ describe("JUnit XML export (#60)", () => {
     let failingScenarioPath: string;
 
     beforeAll(async () => {
-      tempDir = await mkdtemp(join(tmpdir(), "esure-junit-cli-"));
+      tempDir = await mkdtemp(join(tmpdir(), "sorolink-junit-cli-"));
 
       failingScenarioPath = join(tempDir, "failing.json");
       await writeFile(

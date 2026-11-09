@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ValidatedScenario } from "@esure/backend/src/domain.js";
-import { SCENARIO_LIMITS } from "@esure/backend/src/scenario-schema.js";
+import type { ValidatedScenario } from "@sorolink/backend/src/domain.js";
+import { SCENARIO_LIMITS } from "@sorolink/backend/src/scenario-schema.js";
 
 const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
@@ -17,10 +17,10 @@ vi.mock("node:fs", () => ({
   readdirSync: mocks.fsReaddirSync,
   statSync: mocks.fsStatSync,
 }));
-vi.mock("@esure/backend/src/scenarios.js", () => ({
+vi.mock("@sorolink/backend/src/scenarios.js", () => ({
   createScenarioRegistry: mocks.createRegistry,
 }));
-vi.mock("@esure/backend/stellar-gateway.js", () => ({
+vi.mock("@sorolink/backend/stellar-gateway.js", () => ({
   StellarTestnetGateway: class {
     execute = mocks.execute;
   },
@@ -545,38 +545,38 @@ describe("CLI commands", () => {
 
     stdout = [];
     expect(await invokeCli("--version")).toBe(0);
-    expect(stdout.join("\n")).toContain("esure v0.1.0");
+    expect(stdout.join("\n")).toContain("sorolink v0.1.0");
   });
 
   describe("#50 positional argument count enforcement", () => {
     it("list rejects any positional target", async () => {
       expect(await invokeCli("list", "unexpected-arg")).toBe(1);
       expect(stderr.join("\n")).toContain("Error: Unexpected argument(s) for list command");
-      expect(stderr.join("\n")).toContain("Usage: esure list");
+      expect(stderr.join("\n")).toContain("Usage: sorolink list");
     });
 
     it("validate requires exactly one target (rejects missing target)", async () => {
       expect(await invokeCli("validate")).toBe(1);
       expect(stderr.join("\n")).toContain("Error: Missing file path argument");
-      expect(stderr.join("\n")).toContain("Usage: esure validate <file>");
+      expect(stderr.join("\n")).toContain("Usage: sorolink validate <file>");
     });
 
     it("validate requires exactly one target (rejects multiple targets)", async () => {
       expect(await invokeCli("validate", "scenario1.json", "scenario2.json")).toBe(1);
       expect(stderr.join("\n")).toContain("Error: Unexpected argument(s) for validate command");
-      expect(stderr.join("\n")).toContain("Usage: esure validate <file>");
+      expect(stderr.join("\n")).toContain("Usage: sorolink validate <file>");
     });
 
     it("run requires a target (rejects missing target)", async () => {
       expect(await invokeCli("run")).toBe(1);
       expect(stderr.join("\n")).toContain("Error: Missing scenario ID or file path");
-      expect(stderr.join("\n")).toContain("Usage: esure run <scenario-id> or esure run <file>");
+      expect(stderr.join("\n")).toContain("Usage: sorolink run <scenario-id> or sorolink run <file>");
     });
 
     it("run rejects multiple positional targets", async () => {
       expect(await invokeCli("run", "target1", "target2")).toBe(1);
       expect(stderr.join("\n")).toContain("Error: Unexpected argument(s) for run command");
-      expect(stderr.join("\n")).toContain("Usage: esure run <scenario-id> or esure run <file>");
+      expect(stderr.join("\n")).toContain("Usage: sorolink run <scenario-id> or sorolink run <file>");
     });
 
     it("accepts paths containing spaces when passed as a single argument", async () => {
@@ -976,8 +976,8 @@ describe("#68 ASCII status markers", () => {
   it("completions bash emits a bash completion script", async () => {
     expect(await invokeCli("completions", "bash")).toBe(0);
     const out = stdout.join("\n");
-    expect(out).toContain("_esure_complete()");
-    expect(out).toContain("complete -F _esure_complete esure");
+    expect(out).toContain("_sorolink_complete()");
+    expect(out).toContain("complete -F _sorolink_complete sorolink");
     expect(out).toContain("list");
     expect(out).toContain("doctor");
   });
@@ -985,8 +985,8 @@ describe("#68 ASCII status markers", () => {
   it("completions zsh emits a zsh completion script", async () => {
     expect(await invokeCli("completions", "zsh")).toBe(0);
     const out = stdout.join("\n");
-    expect(out).toContain("#compdef esure");
-    expect(out).toContain("_esure()");
+    expect(out).toContain("#compdef sorolink");
+    expect(out).toContain("_sorolink()");
     expect(out).toContain("list");
     expect(out).toContain("doctor");
   });
@@ -1275,7 +1275,7 @@ describe("#57 derive --version from package metadata", () => {
 
   it("displays version matching package.json", async () => {
     expect(await invokeCli("--version")).toBe(0);
-    expect(stdout.join("\n")).toBe("esure v0.1.0");
+    expect(stdout.join("\n")).toBe("sorolink v0.1.0");
   });
 });
 

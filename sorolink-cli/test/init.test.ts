@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { validateScenarioDefinition } from "@esure/backend/scenario-schema.js";
+import { validateScenarioDefinition } from "@sorolink/backend/scenario-schema.js";
 import { parse as parseYaml } from "yaml";
 
 const execFileAsync = promisify(execFile);
@@ -14,7 +14,7 @@ describe("CLI init command (#62)", () => {
   let tempDir: string;
 
   beforeAll(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "esure-init-test-"));
+    tempDir = await mkdtemp(join(tmpdir(), "sorolink-init-test-"));
   });
 
   afterAll(async () => {
@@ -28,7 +28,7 @@ describe("CLI init command (#62)", () => {
     } catch (err: any) {
       expect(err.code).toBe(1);
       expect(err.stderr).toContain("Missing file path argument");
-      expect(err.stderr).toContain("Usage: esure init <file>");
+      expect(err.stderr).toContain("Usage: sorolink init <file>");
     }
   });
 
@@ -42,8 +42,8 @@ describe("CLI init command (#62)", () => {
 
     expect(stderr).toBe("");
     expect(stdout).toContain(`Scenario scaffolded: ${target}`);
-    expect(stdout).toContain(`Validate: esure validate ${target}`);
-    expect(stdout).toContain(`Run:      esure run ${target}`);
+    expect(stdout).toContain(`Validate: sorolink validate ${target}`);
+    expect(stdout).toContain(`Run:      sorolink run ${target}`);
 
     const content = await readFile(target, "utf-8");
     const parsed = JSON.parse(content);

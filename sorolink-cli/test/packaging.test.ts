@@ -13,7 +13,7 @@ describe("Packaging and distribution smoke tests (#58)", () => {
   let tempDir: string;
 
   beforeAll(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "esure-pkg-test-"));
+    tempDir = await mkdtemp(join(tmpdir(), "sorolink-pkg-test-"));
   });
 
   afterAll(async () => {
@@ -25,7 +25,7 @@ describe("Packaging and distribution smoke tests (#58)", () => {
       cwd: tempDir,
     });
     expect(stderr).toBe("");
-    expect(stdout).toContain("esure - Stellar Testnet scenario testing toolkit");
+    expect(stdout).toContain("sorolink - Stellar Testnet scenario testing toolkit");
     expect(stdout).toContain("init <file>");
     expect(stdout).toContain("--report-file");
     expect(stdout).toContain("--junit");
@@ -36,7 +36,7 @@ describe("Packaging and distribution smoke tests (#58)", () => {
       cwd: tempDir,
     });
     expect(stderr).toBe("");
-    expect(stdout.trim()).toBe("esure v0.1.0");
+    expect(stdout.trim()).toBe("sorolink v0.1.0");
   });
 
   it("node dist/cli.js list resolves bundled scenarios from outside the source checkout", async () => {
