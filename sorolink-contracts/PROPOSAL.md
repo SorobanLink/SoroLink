@@ -31,7 +31,7 @@ accounts:
   - { id: admin, generate: true, fund: true }
 contracts:
   - id: token
-    artifact: esure-fixtures/token@1.0.0
+    artifact: sorolink-fixtures/token@1.0.0
 steps:
   - id: deploy
     type: deployContract
@@ -69,7 +69,7 @@ accounts:
   - { id: bob, generate: true, fund: true }
 contracts:
   - id: token
-    artifact: esure-fixtures/token@1.0.0
+    artifact: sorolink-fixtures/token@1.0.0
 steps:
   - id: transfer
     type: invokeContract
@@ -95,8 +95,8 @@ These examples do not authorize arbitrary function names or unbounded data.
 ## Architecture
 
 Keep scenario orchestration, validation, and sanitized reports in
-`esure-backend`. Keep reviewed fixture contracts, their source, tests, interface
-metadata, and published artifacts in `esure-contracts`. The backend should use
+`sorolink-backend`. Keep reviewed fixture contracts, their source, tests, interface
+metadata, and published artifacts in `sorolink-contracts`. The backend should use
 the Stellar SDK's Soroban RPC capabilities for simulation, transaction
 submission, confirmation, and read-only state inspection. It should not embed a
 general-purpose WebAssembly runtime.

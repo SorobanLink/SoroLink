@@ -1,6 +1,6 @@
-# Esure Contracts
+# SoroLink Contracts
 
-Soroban contracts, tests, and deployment tooling used by Esure scenarios.
+Soroban contracts, tests, and deployment tooling used by SoroLink scenarios.
 
 ## Responsibilities
 
@@ -9,12 +9,12 @@ Soroban contracts, tests, and deployment tooling used by Esure scenarios.
 - Define and document contract events
 - Include Rust unit and integration tests
 - Provide testnet and local-network deployment scripts
-- Publish contract IDs and interface metadata for `esure-backend`
+- Publish contract IDs and interface metadata for `sorolink-backend`
 
 ## Boundary
 
 Only logic that must execute on-chain belongs here. Scenario orchestration,
-user accounts, and report storage belong in `esure-backend`.
+user accounts, and report storage belong in `sorolink-backend`.
 
 ## Status
 

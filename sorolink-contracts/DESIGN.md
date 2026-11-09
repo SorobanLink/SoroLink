@@ -1,6 +1,6 @@
 # Soroban Fixture Design Gate
 
-The contracts repository is intentionally code-free during Esure's classic
+The contracts repository is intentionally code-free during SoroLink's classic
 payment MVP.
 
 ## Admission rule
@@ -17,7 +17,7 @@ Every proposal must define:
 - Events and their diagnostic value
 - Authorization requirements
 - Storage lifetime and resource bounds
-- Failure cases Esure must explain
+- Failure cases SoroLink must explain
 - Local and Testnet deployment behavior
 - Deterministic unit and integration tests
 - Versioning and artifact publication
