@@ -21,7 +21,7 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
 
 (postgresAvailable ? describe.sequential : describe.skip)("PostgreSQL persistence foundation", () => {
   beforeAll(async () => {
-    directory = await mkdtemp(join(tmpdir(), "esure-postgres-"));
+    directory = await mkdtemp(join(tmpdir(), "sorolink-postgres-"));
     postgres = new EmbeddedPostgres({ databaseDir: directory, user: "postgres", password: "test-password", port, persistent: true, onLog: () => undefined, onError: () => undefined });
     await postgres.initialise();
     await postgres.start();
@@ -37,8 +37,8 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
   }, 30_000);
 
   it("migrates a clean database and safely re-runs migrations", async () => {
-    await runMigrations(database, undefined, "esure_migrations");
-    await runMigrations(database, undefined, "esure_migrations");
+    await runMigrations(database, undefined, "sorolink_migrations");
+    await runMigrations(database, undefined, "sorolink_migrations");
     const result = await database.query<{ count: string }>("SELECT count(*)::text AS count FROM schema_migrations");
     expect(result.rows[0]?.count).toBe("4");
   });
@@ -87,7 +87,7 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
   it("denies immutable version UPDATE and DELETE to the application role and to the owner", async () => {
     const id = (await database.query<{ id: string }>("SELECT id FROM scenario_versions LIMIT 1")).rows[0]!.id;
     await expect(database.transaction(async (client) => {
-      await client.query("SET LOCAL ROLE esure_application");
+      await client.query("SET LOCAL ROLE sorolink_application");
       await client.query("UPDATE scenario_versions SET version_number = version_number WHERE id = $1", [id]);
     })).rejects.toThrow();
     await expect(database.query("DELETE FROM scenario_versions WHERE id = $1", [id])).rejects.toThrow("immutable");
@@ -101,16 +101,16 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
       VALUES ($1, 1, 1, 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '{}'::jsonb, 'json', clock_timestamp() - interval '31 days') RETURNING id`, [scenarioId]);
     const versionId = version.rows[0]!.id;
     await expect(database.transaction(async (client) => {
-      await client.query("SET LOCAL ROLE esure_maintenance");
-      await client.query("SET LOCAL esure.cleanup_mode = 'on'");
+      await client.query("SET LOCAL ROLE sorolink_maintenance");
+      await client.query("SET LOCAL sorolink.cleanup_mode = 'on'");
       await client.query("DELETE FROM scenario_versions WHERE id = $1", [versionId]);
     })).rejects.toThrow("immutable");
 
     await database.transaction(async (client) => {
       const cleanupId = "123e4567-e89b-42d3-a456-426614174000";
-      await client.query("SET LOCAL ROLE esure_maintenance");
-      await client.query("SET LOCAL esure.cleanup_mode = 'on'");
-      await client.query("SELECT set_config('esure.cleanup_id', $1, true)", [cleanupId]);
+      await client.query("SET LOCAL ROLE sorolink_maintenance");
+      await client.query("SET LOCAL sorolink.cleanup_mode = 'on'");
+      await client.query("SELECT set_config('sorolink.cleanup_id', $1, true)", [cleanupId]);
       await client.query("INSERT INTO cleanup_audit(cleanup_id, action, target_table, target_id, reason) VALUES ($1, 'delete_scenario_version', 'scenario_versions', $2, 'retention test')", [cleanupId, versionId]);
       await client.query("DELETE FROM scenario_versions WHERE id = $1", [versionId]);
       await client.query("INSERT INTO cleanup_audit(cleanup_id, action, target_table, target_id, reason) VALUES ($1, 'delete_scenario', 'scenarios', $2, 'retention test')", [cleanupId, scenarioId]);

@@ -18,7 +18,7 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
 // setup already used by database.integration.test.ts.
 (postgresAvailable ? describe.sequential : describe.skip)("migrate-status (read-only migration state)", () => {
   beforeAll(async () => {
-    directory = await mkdtemp(join(tmpdir(), "esure-migrate-status-"));
+    directory = await mkdtemp(join(tmpdir(), "sorolink-migrate-status-"));
     postgres = new EmbeddedPostgres({ databaseDir: directory, user: "postgres", password: "test-password", port, persistent: true, onLog: () => undefined, onError: () => undefined });
     await postgres.initialise();
     await postgres.start();
@@ -49,7 +49,7 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
   });
 
   it("reports everything applied and nothing pending on a fully current schema", async () => {
-    await runMigrations(database, undefined, "esure_migrations");
+    await runMigrations(database, undefined, "sorolink_migrations");
     const status = await migrationStatus(database);
     expect(status.pending).toHaveLength(0);
     expect(status.unexpected).toHaveLength(0);

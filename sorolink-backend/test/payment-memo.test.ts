@@ -10,7 +10,7 @@ import { loadConfig } from "../src/config.js";
 import type { ApiOperations } from "../src/generated/api-types.js";
 import type { ScenarioDefinition } from "../src/domain.js";
 
-function definition(memo: string = "Esure memo tracking"): ScenarioDefinition {
+function definition(memo: string = "SoroLink memo tracking"): ScenarioDefinition {
   return {
     schemaVersion: 1, id: "memo-test", version: 1, name: "Memo test", description: "Synthetic memo test", network: "testnet",
     accounts: [{ id: "sender", generate: true, fund: false }, { id: "recipient", generate: true, fund: false }],
@@ -58,8 +58,8 @@ describe("text memo validation and contract", () => {
     expect(schema).toContain("28 UTF-8 bytes");
     const fixture = createScenarioRegistry().find("payment-with-memo")!;
     expect(fixture.version).toBe(2);
-    expect(fixture.steps[0]).toMatchObject({ type: "payment", memo: "Esure memo tracking" });
-    expect(fixture.assertions).toContainEqual({ type: "transactionMemoEquals", step: "send-xlm-with-memo", memo: "Esure memo tracking" });
+    expect(fixture.steps[0]).toMatchObject({ type: "payment", memo: "SoroLink memo tracking" });
+    expect(fixture.assertions).toContainEqual({ type: "transactionMemoEquals", step: "send-xlm-with-memo", memo: "SoroLink memo tracking" });
   });
 
   it("validates byte limits through the public API before executing", async () => {
@@ -90,7 +90,7 @@ function mockNetwork(record: Record<string, unknown>) {
 }
 
 describe("submitted payment memo and confirmed evidence", () => {
-  it.each(["", "Esure memo tracking", "😀".repeat(7)])("signs the actual transaction with text memo %s", async (memo) => {
+  it.each(["", "SoroLink memo tracking", "😀".repeat(7)])("signs the actual transaction with text memo %s", async (memo) => {
     const { gateway, submit, lookup } = mockNetwork({ hash: "a".repeat(64), successful: true, memo_type: "text", memo });
     const result = await gateway.execute(prepareScenario(definition(memo)));
     const built = submit.mock.calls[0]![0] as Transaction;
@@ -120,8 +120,8 @@ describe("submitted payment memo and confirmed evidence", () => {
     { memo_type: "id", memo: "123" },
     { memo_type: "text", memo: `S${"A".repeat(55)}` },
     { memo_type: "text", memo: "\ud800" },
-    { memo_type: "text", memo: "Esure memo tracking", successful: false },
-    { memo_type: "text", memo: "Esure memo tracking", hash: "b".repeat(64) },
+    { memo_type: "text", memo: "SoroLink memo tracking", successful: false },
+    { memo_type: "text", memo: "SoroLink memo tracking", hash: "b".repeat(64) },
   ])("fails closed for mismatched or unsafe Horizon evidence: %j", async (record) => {
     const { gateway } = mockNetwork({ hash: "a".repeat(64), successful: true, ...record, envelope_xdr: "private-envelope" });
     const result = await gateway.execute(prepareScenario(definition()));
@@ -131,7 +131,7 @@ describe("submitted payment memo and confirmed evidence", () => {
   });
 
   it("retries transaction lookup without resubmitting the payment", async () => {
-    const { gateway, submit, call } = mockNetwork({ hash: "a".repeat(64), successful: true, memo_type: "text", memo: "Esure memo tracking" });
+    const { gateway, submit, call } = mockNetwork({ hash: "a".repeat(64), successful: true, memo_type: "text", memo: "SoroLink memo tracking" });
     call.mockRejectedValueOnce({ response: { status: 503 } });
     expect((await gateway.execute(prepareScenario(definition()))).assertions[0]?.status).toBe("passed");
     expect(call).toHaveBeenCalledTimes(2);

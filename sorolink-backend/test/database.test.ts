@@ -18,7 +18,7 @@ function config(): AppConfig {
     runTimeoutMs: 5_000, stepTimeoutMs: 1_000, maxConcurrentRuns: 2, metricsEnabled: false, maxConcurrentFriendbotRequests: 5, maxStoredRuns: 100, runRetentionMs: 60_000,
     runPersistenceEnabled: false,
     rateLimitMax: 100, runRateLimitMax: 50, rateLimitWindowMs: 60_000, bodyLimitBytes: 16_384,
-    persistenceMode: "published", databaseUrl: "postgresql://invalid:invalid@127.0.0.1:1/esure",
+    persistenceMode: "published", databaseUrl: "postgresql://invalid:invalid@127.0.0.1:1/sorolink",
     databasePoolMax: 1, databaseConnectionTimeoutMs: 500, databaseQueryTimeoutMs: 500, databaseIdleTimeoutMs: 1_000,
   };
 }

@@ -33,7 +33,7 @@ describe.runIf(live)("real Stellar Testnet smoke", () => {
       expect(report.assertions.every((assertion) => assertion.status === "passed")).toBe(true);
       if (scenarioId === "payment-with-memo") {
         expect(report.assertions).toContainEqual(expect.objectContaining({
-          type: "transactionMemoEquals", status: "passed", expected: "Esure memo tracking", actual: "Esure memo tracking",
+          type: "transactionMemoEquals", status: "passed", expected: "SoroLink memo tracking", actual: "SoroLink memo tracking",
         }));
       }
       if (scenarioId === "xlm-payment") {
@@ -71,7 +71,7 @@ describe.runIf(live)("real Stellar Testnet smoke", () => {
       }
       const downloaded = await app.inject({ method: "GET", url: `/api/v1/runs/${report.id}/report` });
       expect(downloaded.statusCode).toBe(200);
-      expect(downloaded.headers["content-disposition"]).toContain(`esure-run-${report.id}.json`);
+      expect(downloaded.headers["content-disposition"]).toContain(`sorolink-run-${report.id}.json`);
     }, 150_000);
   }
 

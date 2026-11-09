@@ -24,7 +24,7 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
   let store: PostgresRunStore;
 
   beforeAll(async () => {
-    directory = await mkdtemp(join(tmpdir(), "esure-run-history-"));
+    directory = await mkdtemp(join(tmpdir(), "sorolink-run-history-"));
     postgres = new EmbeddedPostgres({ databaseDir: directory, user: "postgres", password: "test-password", port, persistent: true, onLog: () => undefined, onError: () => undefined });
     await postgres.initialise();
     await postgres.start();

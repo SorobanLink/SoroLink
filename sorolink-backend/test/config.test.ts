@@ -34,13 +34,13 @@ describe("loadConfig", () => {
   it("requires published PostgreSQL persistence to enable run history", () => {
     expect(loadConfig({
       PERSISTENCE_MODE: "published",
-      DATABASE_URL: "postgres://localhost/esure",
+      DATABASE_URL: "postgres://localhost/sorolink",
       RUN_PERSISTENCE_ENABLED: "true",
     }).runPersistenceEnabled).toBe(true);
     expect(() => loadConfig({ RUN_PERSISTENCE_ENABLED: "true" })).toThrow(/PERSISTENCE_MODE=published/);
     expect(() => loadConfig({
       PERSISTENCE_MODE: "published",
-      DATABASE_URL: "postgres://localhost/esure",
+      DATABASE_URL: "postgres://localhost/sorolink",
       RUN_PERSISTENCE_ENABLED: "yes",
     })).toThrow(/RUN_PERSISTENCE_ENABLED/);
   });

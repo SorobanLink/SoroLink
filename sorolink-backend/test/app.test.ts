@@ -63,7 +63,7 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
-describe("Esure API", () => {
+describe("SoroLink API", () => {
   it("reports Testnet health", async () => {
     const response = await createApp().inject({ method: "GET", url: "/health" });
     expect(response.statusCode).toBe(200);
@@ -80,9 +80,9 @@ describe("Esure API", () => {
     const response = await app.inject({ method: "GET", url: "/metrics" });
     expect(response.statusCode).toBe(200);
     expect(response.headers["content-type"]).toContain("text/plain");
-    expect(response.body).toContain('esure_terminal_runs_total{outcome="passed"} 0');
-    expect(response.body).toContain('esure_rejected_run_starts_total{reason="capacity"} 0');
-    expect(response.body).toContain("esure_run_duration_seconds_count 0");
+    expect(response.body).toContain('sorolink_terminal_runs_total{outcome="passed"} 0');
+    expect(response.body).toContain('sorolink_rejected_run_starts_total{reason="capacity"} 0');
+    expect(response.body).toContain("sorolink_run_duration_seconds_count 0");
     expect([...response.body.matchAll(/\{([^}]+)\}/g)].map((match) => match[1])).toEqual([
       'outcome="passed"',
       'outcome="failed"',

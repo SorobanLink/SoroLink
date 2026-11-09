@@ -125,7 +125,7 @@ describe("Issue #69 — catalogue ETag and If-None-Match", () => {
   });
 
   it("returns a valid ETag even for an empty catalogue (no scenarios loaded)", async () => {
-    const emptyDir = mkdtempSync(join(tmpdir(), "esure-empty-catalogue-"));
+    const emptyDir = mkdtempSync(join(tmpdir(), "sorolink-empty-catalogue-"));
     try {
       const app = buildApp({ config: { ...config, scenarioDirectory: emptyDir }, ledger: createMockLedger() });
       try {
@@ -162,7 +162,7 @@ describe("Issue #70 — GET /api/v1/schemas/scenario-v1.json", () => {
   it("includes the stable $id field that tools can use as a schema identifier", async () => {
     const app = createApp();
     const response = await app.inject({ method: "GET", url: "/api/v1/schemas/scenario-v1.json" });
-    expect(response.json().$id).toBe("https://esure.dev/schemas/scenario-v1.json");
+    expect(response.json().$id).toBe("https://sorolink.dev/schemas/scenario-v1.json");
   });
 
   it("the returned schema can be compiled and used to validate a valid scenario definition", async () => {

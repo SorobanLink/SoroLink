@@ -82,7 +82,7 @@ assertions:
   });
 
   it("loads a completely new external fixture without source-code registration", () => {
-    const directory = mkdtempSync(join(tmpdir(), "esure-scenarios-"));
+    const directory = mkdtempSync(join(tmpdir(), "sorolink-scenarios-"));
     temporaryDirectories.push(directory);
     writeFileSync(join(directory, "new-scenario.json"), JSON.stringify({ ...completeScenario(), id: "external-scenario", name: "External scenario" }));
     const registry = new ScenarioRegistry([directory]);
