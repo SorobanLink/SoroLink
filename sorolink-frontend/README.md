@@ -1,13 +1,13 @@
-# Esure Frontend
+# SoroLink Frontend
 
-![Esure logo](./public/esure-mark.svg)
+![SoroLink logo](./public/sorolink-mark.svg)
 
-The web dashboard for running and inspecting Esure Stellar Testnet scenarios.
+The web dashboard for running and inspecting SoroLink Stellar Testnet scenarios.
 
 ## Requirements
 
 - Node.js 20.9 or newer
-- A running `esure-backend` instance
+- A running `sorolink-backend` instance
 
 ## Setup
 
