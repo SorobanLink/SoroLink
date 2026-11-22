@@ -3,9 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ApiError, RateLimitError, downloadReport, getRun, getScenario, listScenarios, startRun, type JsonValue, type RunReport, type ScenarioDetail, type ScenarioSummary } from "@/lib/api";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const terminalStatuses = new Set(["passed", "failed", "cancelled"]);
 const DEFAULT_TAB_TITLE = "SoroLink – Stellar Testing Dashboard";
+
+/** #6 — Default number of completed runs kept in the session "Recent runs" panel. */
+export const DEFAULT_RECENT_RUNS_LIMIT = 10;
 
 export function getPollingDelay(pollAttempt: number, consecutiveFailures: number): number {
   if (consecutiveFailures > 0) {
@@ -144,8 +148,10 @@ function parseCategory(value: string | null): ScenarioFilter {
   return "all";
 }
 
-export function Dashboard() {
+export function Dashboard({ recentRunsLimit = DEFAULT_RECENT_RUNS_LIMIT }: { recentRunsLimit?: number } = {}) {
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
+  // #6 — Session-scoped recent runs (in memory only; cleared on reload)
+  const [recentRuns, setRecentRuns] = useState<RunReport[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [run, setRun] = useState<RunReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -436,6 +442,26 @@ export function Dashboard() {
     }
   };
 
+  // #6 — Record completed runs in the session history (most recent first)
+  useEffect(() => {
+    if (!run || isOffline || !terminalStatuses.has(run.status)) return;
+    setRecentRuns((prev) => {
+      // Re-opening an entry from the list must not reorder it.
+      if (prev.some((entry) => entry.id === run.id)) {
+        return prev.map((entry) => (entry.id === run.id ? run : entry));
+      }
+      return [run, ...prev].slice(0, Math.max(0, recentRunsLimit));
+    });
+  }, [run, isOffline, recentRunsLimit]);
+
+  function handleSelectRecentRun(entry: RunReport) {
+    setIsOffline(false);
+    setImportError(null);
+    setViewMode("report");
+    setRun(entry);
+    setSelectedId(entry.scenarioId);
+  }
+
   // #25 — Update browser tab title to reflect active run status
   useEffect(() => {
     if (!run) {
@@ -688,7 +714,10 @@ export function Dashboard() {
           <img className="brand-mark" src="/sorolink-mark.svg" width="38" height="38" alt="" aria-hidden="true" />
           <span>sorolink</span>
         </a>
-        <a className="docs-link" href="https://developers.stellar.org" target="_blank" rel="noreferrer">Docs <ArrowIcon /></a>
+        <div className="topbar-actions">
+          <ThemeToggle />
+          <a className="docs-link" href="https://developers.stellar.org" target="_blank" rel="noreferrer">Docs <ArrowIcon /></a>
+        </div>
       </header>
 
       <section className="hero shell" id="top">
@@ -1084,6 +1113,13 @@ export function Dashboard() {
           </div>
         )}
 
+        <RecentRunsPanel
+          runs={recentRuns}
+          activeRunId={run?.id ?? null}
+          scenarios={scenarios}
+          onSelect={handleSelectRecentRun}
+        />
+
         {viewMode === "compare" ? (
           <ReportComparisonView currentRun={run} />
         ) : !run ? (
@@ -1116,6 +1152,52 @@ export function Dashboard() {
 
       <footer className="shell"><span>ESURE / TEST WITH CONFIDENCE</span><span>BUILT FOR STELLAR</span></footer>
     </main>
+  );
+}
+
+// #6 — Session "Recent runs" panel. Each entry is a native button, so the
+// list is reachable with Tab and activated with Enter/Space.
+function RecentRunsPanel({
+  runs,
+  activeRunId,
+  scenarios,
+  onSelect,
+}: {
+  runs: RunReport[];
+  activeRunId: string | null;
+  scenarios: ScenarioSummary[];
+  onSelect: (run: RunReport) => void;
+}) {
+  return (
+    <section className="recent-runs" aria-labelledby="recent-runs-heading">
+      <h3 id="recent-runs-heading" className="label">Recent runs</h3>
+      {runs.length === 0 ? (
+        <p className="recent-runs__empty">No completed runs yet in this session. Finished runs will appear here.</p>
+      ) : (
+        <ul className="recent-runs__list">
+          {runs.map((entry) => {
+            const completedIso = entry.completedAt ?? entry.createdAt;
+            const scenarioName = scenarios.find((s) => s.id === entry.scenarioId)?.name ?? entry.scenarioId;
+            const isActive = entry.id === activeRunId;
+            return (
+              <li key={entry.id}>
+                <button
+                  type="button"
+                  className={`recent-run ${isActive ? "active" : ""}`}
+                  aria-current={isActive ? "true" : undefined}
+                  aria-label={`Load run ${entry.id}: ${scenarioName}, ${entry.status}, completed ${formatLocaleDateTime(completedIso)}`}
+                  onClick={() => onSelect(entry)}
+                >
+                  <code className="recent-run__scenario">{entry.scenarioId}</code>
+                  <StatusBadge status={entry.status} />
+                  <time className="recent-run__time" dateTime={completedIso}>{formatLocaleDateTime(completedIso)}</time>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
