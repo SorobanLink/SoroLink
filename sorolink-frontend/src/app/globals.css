@@ -385,4 +385,22 @@ button.download:focus-visible {
   .timeline-card, .summary-card { border: 1px solid #999; background: #fff; break-inside: avoid; margin-bottom: 12px; }
   .print-report-header, .print-only, .print-status-label { display: block !important; }
   .transaction-hash.print-only { word-break: break-all; font: 500 10px var(--font-mono); }
+  .step-body[hidden] { display: block !important; }
+  .step-toggle .chevron-icon { display: none; }
 }
+
+/* ── Collapsible report steps (#14) ─────────────────────────────────────── */
+.step-toggle { display:inline-flex; align-items:center; gap:8px; padding:0; margin:0; border:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.step-toggle:focus-visible { outline:2px solid var(--deep); outline-offset:2px; }
+.step-toggle .chevron-icon { position:static; }
+
+/* ── Stellar Expert transaction links (#15) ─────────────────────────────── */
+.tx-link code { font:inherit; }
+
+/* ── Empty scenario catalogue (#17) ─────────────────────────────────────── */
+.empty-scenarios-illustration { color:var(--muted); margin-bottom:14px; }
+.empty-scenarios a { color:var(--deep); font-weight:600; }
+
+/* ── Scenario list loading skeleton (#18) ───────────────────────────────── */
+.scenario-card.skeleton { animation:skeletonPulse 1.6s ease-in-out infinite; }
+@keyframes skeletonPulse { 0%,100%{opacity:1} 50%{opacity:.55} }

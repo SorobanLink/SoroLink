@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { ApiError, RateLimitError, downloadReport, getRun, getScenario, listScenarios, startRun, type JsonValue, type RunReport, type ScenarioDetail, type ScenarioSummary } from "@/lib/api";
+import { ApiError, RateLimitError, downloadReport, getRun, getScenario, listScenarios, startRun, type JsonValue, type RunReport, type ScenarioDetail, type ScenarioSummary, type StepResult } from "@/lib/api";
 
 const terminalStatuses = new Set(["passed", "failed", "cancelled"]);
 const DEFAULT_TAB_TITLE = "SoroLink – Stellar Testing Dashboard";
@@ -108,6 +108,19 @@ export function formatBalanceDelta(delta: number | string, asset?: string): Form
   }
   const absStr = typeof delta === "string" ? delta.replace(/^-/, "") : String(Math.abs(numeric));
   return { text: `\u2212${absStr}${suffix}`, tone: "negative", color: "#b91c1c" };
+}
+
+export const SCENARIO_SKELETON_ROWS = 5;
+export const QUICK_START_URL = "https://github.com/SorobanLink/SoroLink#quick-start";
+
+/** Stellar Expert Testnet URL for a transaction hash (#15). */
+export function stellarExpertTxUrl(hash: string): string {
+  return `https://stellar.expert/explorer/testnet/tx/${hash}`;
+}
+
+/** Shorten a transaction hash to its first and last 8 characters (#15). */
+export function truncateHash(hash: string): string {
+  return hash.length > 16 ? `${hash.slice(0, 8)}…${hash.slice(-8)}` : hash;
 }
 
 export function searchScenario(scenario: ScenarioSummary, query: string): boolean {
@@ -844,12 +857,24 @@ export function Dashboard() {
           aria-busy={loading}
         >
           {loading ? (
-            [1, 2, 3].map((item) => <div className="scenario-card skeleton" key={item} />)
+            Array.from({ length: SCENARIO_SKELETON_ROWS }, (_, item) => (
+              <div className="scenario-card skeleton" data-testid="scenario-skeleton" aria-hidden="true" key={item} />
+            ))
           ) : catalogueError ? (
             <div className="empty-scenarios" role="alert" aria-live="polite">
               <strong>Couldn&apos;t load scenarios</strong>
               <p>{catalogueError}</p>
               <button type="button" className="run-button run-button--secondary" style={{ marginTop: '16px', minWidth: 'auto', padding: '10px 16px' }} onClick={loadScenarios}>Retry</button>
+            </div>
+          ) : scenarios.length === 0 ? (
+            <div className="empty-scenarios empty-scenarios--none" role="status" aria-live="polite" data-testid="no-scenarios-empty-state">
+              <EmptyScenariosIllustration />
+              <strong>No scenarios available</strong>
+              <p>
+                The backend returned an empty scenario catalogue. Check that the backend is running, that the
+                frontend points at the right backend URL, and that its scenarios directory contains scenario files.{" "}
+                <a href={QUICK_START_URL} target="_blank" rel="noopener noreferrer">Read the quick-start guide</a>
+              </p>
             </div>
           ) : filteredScenarios.length === 0 ? (
             <div className="empty-scenarios" role="status" aria-live="polite">
@@ -1198,6 +1223,13 @@ function RunView({ run, reportFilter, scenarioName, onCancelled }: { run: RunRep
     }
   };
 
+  // #14 — Per-step collapse state, keyed by step id. Not persisted: it lives only
+  // as long as this report view. Passing steps default to collapsed.
+  const [stepExpanded, setStepExpanded] = useState<Record<string, boolean>>({});
+  const isStepExpanded = (step: StepResult) => stepExpanded[step.id] ?? step.status !== "passed";
+  const toggleStep = (step: StepResult) =>
+    setStepExpanded((prev) => ({ ...prev, [step.id]: !isStepExpanded(step) }));
+
   const visibleSteps = run.steps
     .map((step, index) => ({ step, index }))
     .filter(({ step }) => reportFilter === "all" || step.status === "failed");
@@ -1253,7 +1285,9 @@ function RunView({ run, reportFilter, scenarioName, onCancelled }: { run: RunRep
               : "No steps or assertions are currently marked as failed."}</p>
           </div>
         )}
-        {run.steps.map((step, index) => (
+        {run.steps.map((step, index) => {
+          const expanded = isStepExpanded(step);
+          return (
           <div
             className="timeline-row report-row"
             key={step.id}
@@ -1264,18 +1298,39 @@ function RunView({ run, reportFilter, scenarioName, onCancelled }: { run: RunRep
             <div>
               <span className="label">STEP {String(index + 1).padStart(2, "0")} / {step.type}</span>
               <span className="print-status-label">{titleCase(step.status)}</span>
-              <strong>{humanize(step.id)}</strong><p>{step.message}</p>
-              {step.transactionHash && (
-                <div className="tx-actions">
-                  <a href={`https://stellar.expert/explorer/testnet/tx/${step.transactionHash}`} target="_blank" rel="noreferrer">View transaction <ArrowIcon /></a>
-                  <CopyButton value={step.transactionHash} label={`transaction ${step.transactionHash}`} />
-                  <code className="transaction-hash print-only">{step.transactionHash}</code>
-                </div>
-              )}
+              <button
+                type="button"
+                className="step-toggle"
+                aria-expanded={expanded}
+                aria-controls={`step-body-${step.id}`}
+                onClick={() => toggleStep(step)}
+              >
+                <strong>{humanize(step.id)}</strong>
+                <ChevronIcon rotated={expanded} />
+              </button>
+              <div className="step-body" id={`step-body-${step.id}`} hidden={!expanded}>
+                <p>{step.message}</p>
+                {step.transactionHash && (
+                  <div className="tx-actions">
+                    <a
+                      className="tx-link"
+                      href={stellarExpertTxUrl(step.transactionHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={step.transactionHash}
+                    >
+                      <code>{truncateHash(step.transactionHash)}</code> <ArrowIcon />
+                    </a>
+                    <CopyButton value={step.transactionHash} label={`transaction ${step.transactionHash}`} />
+                    <code className="transaction-hash print-only">{step.transactionHash}</code>
+                  </div>
+                )}
+              </div>
             </div>
             <StepMeta step={step} />
           </div>
-        ))}
+          );
+        })}
         {run.assertions.map((assertion, index) => (
           <AssertionRow key={`${assertion.type}-${index}`} assertion={assertion} reportFilter={reportFilter} />
         ))}
@@ -1641,6 +1696,18 @@ function serializeJsonValue(value: JsonValue): string {
   } catch {
     return String(value);
   }
+}
+
+function EmptyScenariosIllustration() {
+  return (
+    <svg className="empty-scenarios-illustration" viewBox="0 0 96 72" width="96" height="72" fill="none" aria-hidden="true" focusable="false">
+      <rect x="10" y="14" width="56" height="44" rx="4" stroke="currentColor" strokeWidth="2" strokeDasharray="4 3" />
+      <rect x="26" y="6" width="56" height="44" rx="4" fill="#f8f6f0" stroke="currentColor" strokeWidth="2" />
+      <path d="M36 20h36M36 28h28M36 36h20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="72" cy="52" r="10" fill="#f8f6f0" stroke="currentColor" strokeWidth="2" />
+      <path d="M68 52h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 function EmptyReport() {
