@@ -22,7 +22,7 @@ describe("CLI terminal run report file (#59)", () => {
       JSON.stringify({
         schemaVersion: 1,
         id: "valid-scenario",
-        version: 1,
+        version: "1.0.0",
         name: "Valid scenario",
         description: "A scenario for report testing",
         network: "testnet",
@@ -40,7 +40,7 @@ describe("CLI terminal run report file (#59)", () => {
       JSON.stringify({
         schemaVersion: 1,
         id: "failing-scenario",
-        version: 1,
+        version: "1.0.0",
         name: "Failing scenario",
         description: "A scenario with invalid network to trigger failure",
         network: "mainnet",

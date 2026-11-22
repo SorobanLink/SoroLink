@@ -250,7 +250,7 @@ function report(overrides: Partial<RunReport> = {}): RunReport {
   return {
     id: randomUUID(),
     scenarioId: "integration-scenario",
-    scenarioVersion: 1,
+    scenarioVersion: "1.0.0",
     scenarioSchemaVersion: 1,
     scenarioContentHash: "sha256:integration",
     network: "testnet",

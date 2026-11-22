@@ -69,7 +69,7 @@ describe("Packaging and distribution smoke tests (#58)", () => {
       JSON.stringify({
         schemaVersion: 1,
         id: "sample-scenario",
-        version: 1,
+        version: "1.0.0",
         name: "Sample Scenario",
         description: "A test scenario for packaging validation",
         network: "testnet",

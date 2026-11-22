@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: payment-with-memo
-version: 2
+version: "1.0.0"
 name: Payment with memo
 description: Send XLM with a text memo and verify it on the confirmed Testnet transaction.
 network: testnet

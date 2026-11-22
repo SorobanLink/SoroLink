@@ -3,7 +3,7 @@ export type StepStatus = "passed" | "failed";
 
 export interface ScenarioSummary {
   id: string;
-  version: number;
+  version: string;
   name: string;
   description: string;
   contentHash: string;
@@ -39,7 +39,7 @@ export type ScenarioAssertion =
 export interface ScenarioDefinition {
   schemaVersion: 1;
   id: string;
-  version: number;
+  version: string;
   name: string;
   description: string;
   network: "testnet";
@@ -120,7 +120,7 @@ export interface RunSummary {
 export interface RunReport {
   id: string;
   scenarioId: string;
-  scenarioVersion: number;
+  scenarioVersion: string;
   scenarioSchemaVersion: 1;
   scenarioContentHash: string;
   network: "testnet";

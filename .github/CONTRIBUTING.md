@@ -41,6 +41,23 @@ work during time-boxed contribution campaigns.
 - New dependencies require a clear need and must pass the repository audit.
 - Accessibility and reduced-motion behavior are required for frontend changes.
 
+## Scenario versioning
+
+Every scenario definition carries a semantic `version` string
+(`MAJOR.MINOR.PATCH`, for example `1.0.0`). The schema rejects any other format.
+Bundled scenarios start at `1.0.0`. When you change a scenario definition, bump
+its `version` in the same pull request:
+
+- **PATCH** for changes that do not alter what the scenario checks (for
+  example, description or name wording).
+- **MINOR** for added steps or assertions that keep existing expectations.
+- **MAJOR** for changes that alter or remove existing steps, assertions, or
+  expected outcomes.
+
+`GET /api/v1/scenarios` exposes the version, and every run report records the
+`scenarioVersion` that was executed, so clients can detect definition changes
+and invalidate cached results.
+
 ## Issue labels and sizing
 
 Issue forms apply a type label: `bug` or `enhancement`. Maintainers add one or

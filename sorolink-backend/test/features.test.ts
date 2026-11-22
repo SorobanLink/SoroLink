@@ -234,7 +234,7 @@ describe("Issue #71 — scenarioVersion selector in POST /api/v1/runs", () => {
     const catalogue = await app.inject({ method: "GET", url: "/api/v1/scenarios" });
     const item = catalogue.json().items.find((s: { id: string }) => s.id === "xlm-payment");
     expect(item).toBeDefined();
-    const bundledVersion: number = item.version;
+    const bundledVersion: string = item.version;
 
     const response = await app.inject({
       method: "POST",
@@ -251,7 +251,7 @@ describe("Issue #71 — scenarioVersion selector in POST /api/v1/runs", () => {
     // Fetch the actual version so we can request a definitely-wrong one.
     const catalogue = await app.inject({ method: "GET", url: "/api/v1/scenarios" });
     const item = catalogue.json().items.find((s: { id: string }) => s.id === "xlm-payment");
-    const wrongVersion = item.version + 999;
+    const wrongVersion = "999.0.0";
 
     const response = await app.inject({
       method: "POST",
@@ -269,7 +269,7 @@ describe("Issue #71 — scenarioVersion selector in POST /api/v1/runs", () => {
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/runs",
-      payload: { scenarioId: "no-such-scenario", scenarioVersion: 1 },
+      payload: { scenarioId: "no-such-scenario", scenarioVersion: "1.0.0" },
     });
     expect(response.statusCode).toBe(404);
     expect(response.json().error.code).toBe("SCENARIO_NOT_FOUND");
@@ -286,12 +286,12 @@ describe("Issue #71 — scenarioVersion selector in POST /api/v1/runs", () => {
     expect(started.json().scenarioContentHash).toBe(item.contentHash);
   });
 
-  it("scenarioVersion is rejected by AJV when less than 1", async () => {
+  it.each([1, "1", "1.0", "v1.0.0", "01.0.0", "1.0.0-beta"])("scenarioVersion %j is rejected by AJV when it is not a MAJOR.MINOR.PATCH string", async (scenarioVersion) => {
     const app = createApp();
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/runs",
-      payload: { scenarioId: "xlm-payment", scenarioVersion: 0 },
+      payload: { scenarioId: "xlm-payment", scenarioVersion },
     });
     expect(response.statusCode).toBe(400);
     expect(response.json().error.code).toBe("INVALID_REQUEST");

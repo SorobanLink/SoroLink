@@ -17,6 +17,12 @@ const nonNegativeAmount = { ...amount } as const;
 const signedAmount = { type: "string", pattern: "^-?(?:0|[1-9][0-9]{0,11})(?:\\.[0-9]{1,7})?$", maxLength: 21 } as const;
 const code = { type: "string", pattern: "^[A-Z0-9]{1,12}$", maxLength: 12 } as const;
 const resultCode = { type: "string", pattern: "^[a-z][a-z0-9_]{0,63}$", maxLength: 64 } as const;
+/**
+ * Issue #42: scenario versions are semantic version strings (MAJOR.MINOR.PATCH).
+ * Bundled scenarios start at 1.0.0; bump the version whenever the definition changes.
+ */
+export const SEMVER_PATTERN = "^(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})$";
+export const semverVersion = { type: "string", pattern: SEMVER_PATTERN, maxLength: 32 } as const;
 const memo = { type: "string", maxLength: TEXT_MEMO_MAX_BYTES, description: "Text memo: at most 28 UTF-8 bytes (not characters), including empty text. The server also rejects malformed Unicode and enforces the byte limit." } as const;
 
 export const scenarioSchemaV1 = {
@@ -27,7 +33,7 @@ export const scenarioSchemaV1 = {
   properties: {
     schemaVersion: { const: 1 },
     id,
-    version: { type: "integer", minimum: 1, maximum: 2_147_483_647 },
+    version: semverVersion,
     name: { type: "string", minLength: 1, maxLength: 120 },
     description: { type: "string", minLength: 1, maxLength: 500 },
     network: { const: "testnet" },

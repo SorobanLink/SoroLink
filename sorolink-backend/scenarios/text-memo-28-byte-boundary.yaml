@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: text-memo-28-byte-boundary
-version: 1
+version: "1.0.0"
 name: Text memo at 28-byte UTF-8 boundary
 description: Send XLM with a text memo at the maximum 28-byte UTF-8 boundary and verify it on the confirmed Testnet transaction.
 network: testnet

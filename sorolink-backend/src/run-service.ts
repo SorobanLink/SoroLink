@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { LedgerGateway, RunError, RunReport, RunSummary, ValidatedScenario } from "./domain.js";
-import type { RunStore } from "./run-store.js";
+import type { RunPage, RunStore } from "./run-store.js";
 import { RunCapacityError, RunTimeoutError, SafeRunError, ShutdownError, withTimeout } from "./errors.js";
 import { isStableStellarErrorCode } from "./stellar-error-interpreter.js";
 
@@ -36,7 +36,7 @@ export interface RunLifecycleLog {
   event: "run.started" | "run.completed" | "run.failed";
   runId: string;
   scenarioId: string;
-  scenarioVersion: number;
+  scenarioVersion: string;
   requestId?: string;
   status: RunReport["status"];
   durationMs: number;
@@ -148,6 +148,11 @@ export class RunService {
 
   get(id: string): Promise<RunReport | undefined> {
     return Promise.resolve(this.store.get(id));
+  }
+
+  /** Issue #41: one page of retained runs, newest first. */
+  list(limit: number, offset: number): Promise<RunPage> {
+    return Promise.resolve(this.store.list(limit, offset));
   }
 
   /**

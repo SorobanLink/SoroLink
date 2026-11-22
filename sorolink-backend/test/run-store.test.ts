@@ -39,7 +39,7 @@ function run(id: string, status: RunReport["status"], completedAt?: string): Run
   return {
     id,
     scenarioId: "xlm-payment",
-    scenarioVersion: 1,
+    scenarioVersion: "1.0.0",
     scenarioSchemaVersion: 1,
     scenarioContentHash: `sha256:${"a".repeat(64)}`,
     network: "testnet",

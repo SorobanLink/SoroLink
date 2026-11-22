@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: path-payment
-version: 1
+version: "1.0.0"
 name: XLM to USDC path payment
 description: Create two Testnet orderbook offers and route XLM through EUR to deliver test-issued USDC.
 network: testnet

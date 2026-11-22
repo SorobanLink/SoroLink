@@ -5,7 +5,7 @@ describe("Amount Boundary Tests (Issue #115)", () => {
   const validScenarioBase = {
     schemaVersion: 1 as const,
     id: "test",
-    version: 1,
+    version: "1.0.0",
     name: "Test",
     description: "Test",
     network: "testnet" as const,

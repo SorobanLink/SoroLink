@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: multi-operation-transaction
-version: 1
+version: "1.0.0"
 name: Multi-operation transaction
 description: Execute trustline creation and asset payment in a single atomic transaction.
 network: testnet

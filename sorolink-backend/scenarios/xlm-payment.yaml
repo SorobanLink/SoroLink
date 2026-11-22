@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: xlm-payment
-version: 1
+version: "1.0.0"
 name: XLM payment
 description: Fund two Testnet accounts, send XLM, and verify the recipient balance.
 network: testnet

@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: same-code-different-issuers
-version: 1
+version: "1.0.0"
 name: Same asset code, different issuers
 description: Verify that assets with the same code but different issuers are treated independently.
 network: testnet

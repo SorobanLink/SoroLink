@@ -12,7 +12,7 @@ import type { ScenarioDefinition } from "../src/domain.js";
 
 function definition(memo: string = "SoroLink memo tracking"): ScenarioDefinition {
   return {
-    schemaVersion: 1, id: "memo-test", version: 1, name: "Memo test", description: "Synthetic memo test", network: "testnet",
+    schemaVersion: 1, id: "memo-test", version: "1.0.0", name: "Memo test", description: "Synthetic memo test", network: "testnet",
     accounts: [{ id: "sender", generate: true, fund: false }, { id: "recipient", generate: true, fund: false }],
     assets: [{ id: "xlm", type: "native" }],
     steps: [{ id: "pay", type: "payment", from: "sender", to: "recipient", asset: "xlm", amount: "1", memo }],
@@ -57,7 +57,7 @@ describe("text memo validation and contract", () => {
     expect(schema).toContain("transactionMemoEquals");
     expect(schema).toContain("28 UTF-8 bytes");
     const fixture = createScenarioRegistry().find("payment-with-memo")!;
-    expect(fixture.version).toBe(2);
+    expect(fixture.version).toBe("1.0.0");
     expect(fixture.steps[0]).toMatchObject({ type: "payment", memo: "SoroLink memo tracking" });
     expect(fixture.assertions).toContainEqual({ type: "transactionMemoEquals", step: "send-xlm-with-memo", memo: "SoroLink memo tracking" });
   });

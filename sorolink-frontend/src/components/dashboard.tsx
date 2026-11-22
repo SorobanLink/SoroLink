@@ -466,7 +466,7 @@ export function Dashboard() {
       .catch((reason: unknown) => {
         if (!active) return;
         if (reason instanceof DOMException && reason.name === "AbortError") return;
-        setCatalogueError(readError(reason));
+        setCatalogueError(describeCatalogueError(reason));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -1727,6 +1727,17 @@ function ChevronIcon({ rotated }: { rotated?: boolean } = {}) {
       <path d="M4 6l4 4 4-4" />
     </svg>
   );
+}
+
+/** #19 — Actionable message for a failed scenario catalogue fetch (non-2xx or thrown). */
+export function describeCatalogueError(reason: unknown): string {
+  if (reason instanceof ApiError) {
+    return `The scenario service responded with HTTP ${reason.status}: ${reason.message} (${reason.code})`;
+  }
+  if (reason instanceof TypeError) {
+    return "Could not reach the scenario service. Check your connection or that the backend is running, then retry.";
+  }
+  return readError(reason);
 }
 
 function readError(reason: unknown): string {

@@ -4,10 +4,18 @@ import { OptimisticConcurrencyError, RunCapacityError } from "./errors.js";
 import type { PoolClient, QueryResultRow } from "pg";
 import type { Database } from "./database.js";
 
+/** Issue #41: one page of runs, newest first. */
+export interface RunPage {
+  items: RunReport[];
+  hasMore: boolean;
+}
+
 export interface RunStore {
   create(run: RunReport): void | Promise<void>;
   get(id: string): RunReport | undefined | Promise<RunReport | undefined>;
   update(id: string, update: Partial<RunReport>): RunReport | Promise<RunReport>;
+  /** Issue #41: list retained runs newest first (createdAt desc, id desc). */
+  list(limit: number, offset: number): RunPage | Promise<RunPage>;
 }
 
 export class InMemoryRunStore implements RunStore {
@@ -49,6 +57,16 @@ export class InMemoryRunStore implements RunStore {
     return structuredClone(updated);
   }
 
+  list(limit: number, offset: number): RunPage {
+    this.removeExpired();
+    const sorted = [...this.#runs.values()].sort((a, b) => {
+      const byCreated = Date.parse(b.createdAt) - Date.parse(a.createdAt);
+      return byCreated !== 0 ? byCreated : b.id.localeCompare(a.id);
+    });
+    const page = sorted.slice(offset, offset + limit);
+    return { items: page.map((run) => structuredClone(run)), hasMore: offset + page.length < sorted.length };
+  }
+
   private removeExpired(): void {
     const cutoff = this.now() - this.retentionMs;
     for (const [id, run] of this.#runs) {
@@ -76,7 +94,7 @@ export class InMemoryRunStore implements RunStore {
 interface PersistedRunRow extends QueryResultRow {
   run_id: string;
   scenario_id: string;
-  scenario_version: number;
+  scenario_version: string;
   scenario_schema_version: 1;
   scenario_content_hash: string;
   network: "testnet";
@@ -124,6 +142,22 @@ export class PostgresRunStore implements RunStore {
     const row = result.rows[0];
     if (row) this.#versions.set(id, row.version);
     return row ? reportFromRow(row) : undefined;
+  }
+
+  async list(limit: number, offset: number): Promise<RunPage> {
+    const result = await this.database.query<PersistedRunRow>(
+      `SELECT run_id, scenario_id, scenario_version, scenario_schema_version,
+        scenario_content_hash, network, status, version, created_at, completed_at,
+        steps, assertions, summary, error
+      FROM runs
+      WHERE scenario_id IS NOT NULL
+        AND (completed_at IS NULL OR completed_at > clock_timestamp() - ($3 * interval '1 millisecond'))
+      ORDER BY created_at DESC, run_id DESC
+      LIMIT $1 OFFSET $2`,
+      [limit + 1, offset, this.retentionMs],
+    );
+    const rows = result.rows.slice(0, limit);
+    return { items: rows.map(reportFromRow), hasMore: result.rows.length > limit };
   }
 
   async update(id: string, update: Partial<RunReport>): Promise<RunReport> {
