@@ -61,7 +61,7 @@ const supportedExtensions = new Set([".json", ".yaml", ".yml"]);
 const maxFilesPerDirectory = 100;
 
 interface CliOptions {
-  output?: "human" | "json";
+  output?: "human" | "json" | "table";
   help?: boolean;
   version?: boolean;
   search?: string;
@@ -325,6 +325,24 @@ async function listCommand(options: CliOptions): Promise<number> {
           2,
         ),
       );
+    } else if (options.output === "table") {
+      const cols = { id: 0, name: 0, version: 0, description: 0 };
+      for (const s of scenarios) {
+        cols.id = Math.max(cols.id, s.id.length);
+        cols.name = Math.max(cols.name, s.name.length);
+        cols.version = Math.max(cols.version, String(s.version).length);
+        cols.description = Math.max(cols.description, s.description.length);
+      }
+      const maxWidth = (process.stdout.columns ?? 120) - 10;
+      cols.description = Math.min(cols.description, Math.max(10, maxWidth - cols.id - cols.name - cols.version - 9));
+      const pad = (s: string, w: number) => s.length > w ? s.slice(0, w - 1) + "…" : s.padEnd(w);
+      const sep = `${"─".repeat(cols.id + 2)}┼${"─".repeat(cols.name + 2)}┼${"─".repeat(cols.version + 2)}┼${"─".repeat(cols.description + 2)}`;
+      console.log(` ${pad("ID", cols.id)}  │ ${pad("Name", cols.name)}  │ ${pad("Ver", cols.version)}  │ ${pad("Description", cols.description)}`);
+      console.log(sep);
+      for (const s of scenarios) {
+        console.log(` ${pad(s.id, cols.id)}  │ ${pad(s.name, cols.name)}  │ ${pad(String(s.version), cols.version)}  │ ${pad(s.description, cols.description)}`);
+      }
+      console.log(`\n${scenarios.length} scenario(s)`);
     } else {
       console.log(`\nBundled Scenarios (${scenarios.length}):\n`);
       for (const scenario of scenarios) {
