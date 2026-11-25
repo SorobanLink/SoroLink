@@ -376,3 +376,7 @@ schema, and generated API types import the updated domain types directly.
 
 The OpenAPI 3.1 contract and embedded Scenario v1 JSON Schema are available at
 `GET /openapi.json`.
+
+## See also
+
+- [Issued asset payment lifecycle](./LIFECYCLE_ISSUED_ASSET_PAYMENT.md) — step-by-step walkthrough of the issuer → trustline → payment → assertion flow, with an account-relationship diagram and a sample run report.
