@@ -130,6 +130,10 @@ For deeper technical context, read the
 
 ## Quick start
 
+> **Windows users:** See [sorolink-docs/WINDOWS_SETUP.md](sorolink-docs/WINDOWS_SETUP.md)
+> for PowerShell and Git Bash equivalents, Node.js installation via nvm-windows or
+> winget, and Windows-specific troubleshooting.
+
 ### Prerequisites
 
 - Git
@@ -337,7 +341,10 @@ limits active executions, while `MAX_STORED_RUNS` separately limits only the
 in-memory report store. When that store is full it evicts a terminal report; it
 does not evict active runs. `RUN_RETENTION_MS` applies to completed reports in
 memory and PostgreSQL, but PostgreSQL rows remain stored. The two rate limits
-share `RATE_LIMIT_WINDOW_MS` and are process-local.
+share `RATE_LIMIT_WINDOW_MS` and are process-local. For a detailed explanation
+of how the limits interact, 429 response format, and example configurations for
+single-user, team, and public deployments, see
+[sorolink-docs/RATE_LIMITING.md](sorolink-docs/RATE_LIMITING.md).
 
 `DATABASE_URL` is for the application role only. Set `DATABASE_MIGRATION_URL`
 for the one-shot migration commands, using the separate migration role; it does
@@ -398,6 +405,8 @@ The Render free tier sleeps after 15 minutes of inactivity. To keep the backend 
 Active work is tracked in [GitHub Issues](https://github.com/SoroLinkorg/SoroLink/issues).
 
 ## Troubleshooting
+
+For a comprehensive list of failure modes (rate limiting, sequence conflicts, Testnet resets, CORS errors, missing trustlines, Friendbot outages, database migrations, CLI exit codes, and more) see [sorolink-docs/TROUBLESHOOTING.md](sorolink-docs/TROUBLESHOOTING.md).
 
 ### The deployed dashboard takes a long time to load
 
