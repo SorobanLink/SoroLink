@@ -68,6 +68,8 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  /** Number of additional run attempts on transient failure. Default 0. */
+  retries?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,10 +149,14 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      retries: { type: "string" },
     },
     allowPositionals: true,
     strict: false,
   });
+
+  const retriesRaw = typeof values.retries === "string" ? parseInt(values.retries, 10) : NaN;
+  const retries = Number.isFinite(retriesRaw) && retriesRaw >= 0 ? retriesRaw : 0;
 
   return {
     command: positionals[0],
@@ -163,6 +169,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      retries,
     },
     failFast: Boolean(values["fail-fast"]),
   };
