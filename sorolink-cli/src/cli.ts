@@ -973,6 +973,9 @@ export async function main(): Promise<number> {
   }
 
   switch (command) {
+    case "version":
+      showVersion();
+      return 0;
     case "list":
       if (args.length > 0) {
         console.error("Error: Unexpected argument(s) for list command");
