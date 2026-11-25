@@ -30,6 +30,39 @@ work during time-boxed contribution campaigns.
 - Respond to review feedback within the campaign window when applicable.
 - Maintainers may close abandoned or out-of-scope pull requests.
 
+### PR checklist
+
+Before requesting review, confirm:
+
+- [ ] All acceptance criteria in the linked issue are met
+- [ ] Tests added or updated for changed behavior
+- [ ] `npm run check` (or the repo's documented check command) passes locally
+- [ ] PR is linked to the assigned issue (e.g. "Closes #NNN")
+- [ ] No secrets, `.env` files, or Mainnet configuration are included
+- [ ] Changes are restricted to Testnet scope (MVP requirement)
+
+### What reviewers look for
+
+Maintainers evaluate pull requests on:
+
+- **Correctness** — does the change fully satisfy the acceptance criteria?
+- **Test quality** — are edge cases covered, and do tests actually fail when the code is broken?
+- **Scope discipline** — does the PR stay within the issue's stated scope?
+- **Engineering rules** — are all rules in the _Engineering rules_ section respected?
+
+### Review response time
+
+Reviewers aim to leave a first response within **7 days** of PR submission.
+If you do not hear back after 7 days, leave a comment on the PR to request attention.
+
+### Requesting re-review
+
+After addressing all review feedback:
+
+1. Resolve each conversation you have addressed (click **Resolve conversation**).
+2. Leave a brief reply summarising what you changed.
+3. Click **Re-request review** next to the reviewer's name in the sidebar.
+
 ## Engineering rules
 
 - SoroLink's MVP is restricted to Stellar Testnet.

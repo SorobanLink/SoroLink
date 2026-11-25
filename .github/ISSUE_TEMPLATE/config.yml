@@ -6,4 +6,7 @@ contact_links:
   - name: Stellar developer documentation
     url: https://developers.stellar.org
     about: Check protocol and SDK documentation before reporting integration behavior.
+  - name: Contributing guide (PR checklist & review expectations)
+    url: https://github.com/SorobanLink/SoroLink/blob/main/.github/CONTRIBUTING.md
+    about: Read this before opening a pull request.
 
