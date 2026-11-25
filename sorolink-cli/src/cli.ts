@@ -68,6 +68,7 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  dryRun?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,6 +148,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      "dry-run": { type: "boolean" },
     },
     allowPositionals: true,
     strict: false,
@@ -163,6 +165,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      dryRun: Boolean(values["dry-run"]),
     },
     failFast: Boolean(values["fail-fast"]),
   };
@@ -531,7 +534,31 @@ async function validateDirectoryCommand(dirPath: string, options: CliOptions): P
   }
 }
 
+async function diffCommand(runId1: string, runId2: string, options: CliOptions): Promise<number> {
+  const { readFile } = await import("node:fs/promises");
+  let report1: Record<string, unknown>, report2: Record<string, unknown>;
+  try {
+    report1 = JSON.parse(await readFile(runId1, "utf-8")) as Record<string, unknown>;
+    report2 = JSON.parse(await readFile(runId2, "utf-8")) as Record<string, unknown>;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (options.output === "json") console.error(JSON.stringify({ error: { message: msg } }));
+    else console.error(`Error: ${msg}`);
+    return 1;
+  }
+  if (options.output === "json") {
+    const diff = { a: runId1, b: runId2, statusChanged: report1.status !== report2.status, aStatus: report1.status, bStatus: report2.status };
+    console.log(JSON.stringify(diff, null, 2));
+  } else {
+    console.log(`Diff: ${runId1} vs ${runId2}`);
+    if (report1.status !== report2.status) console.log(`  status: ${String(report1.status)} → ${String(report2.status)}`);
+    else console.log(`  status: ${String(report1.status)} (unchanged)`);
+  }
+  return 0;
+}
+
 async function runCommand(target: string, options: CliOptions): Promise<number> {
+  if (options.dryRun) return validateFileCommand(target, options);
   let scenario: ValidatedScenario;
   try {
     // Determine if target is a bundled scenario ID or file path
@@ -1049,6 +1076,12 @@ export async function main(): Promise<number> {
         return 1;
       }
       return completionsCommand(args[0]);
+    case "diff":
+      if (args.length !== 2) {
+        reportArgumentError("Usage: sorolink diff <report1.json> <report2.json>", undefined, options.output);
+        return 1;
+      }
+      return diffCommand(args[0], args[1], options);
     case "doctor":
       return doctorCommand(options);
     default:
