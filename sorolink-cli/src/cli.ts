@@ -68,6 +68,8 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  /** Disables ANSI colour codes — set via --no-color or the NO_COLOR env var. */
+  noColor?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,10 +149,13 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      "no-color": { type: "boolean" },
     },
     allowPositionals: true,
     strict: false,
   });
+
+  const noColor = Boolean(values["no-color"]) || Boolean(process.env["NO_COLOR"]);
 
   return {
     command: positionals[0],
@@ -163,6 +168,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      noColor,
     },
     failFast: Boolean(values["fail-fast"]),
   };
