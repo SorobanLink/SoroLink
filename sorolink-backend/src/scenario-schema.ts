@@ -55,7 +55,7 @@ export const scenarioSchemaV1 = {
     assertions: {
       type: "array", minItems: 1, maxItems: SCENARIO_LIMITS.assertions,
       items: { oneOf: [
-        { type: "object", additionalProperties: false, required: ["type", "step", "memo"], properties: { type: { const: "transactionMemoEquals" }, step: id, memo } },
+        { type: "object", additionalProperties: false, required: ["type", "step", "memo"], properties: { type: { const: "transactionMemoEquals" }, step: id, memo: { ...memo, minLength: 1 } } },
         { type: "object", additionalProperties: false, required: ["type", "account", "asset", "amount"], properties: { type: { const: "balanceEquals" }, account: id, asset: id, amount } },
         { type: "object", additionalProperties: false, required: ["type", "account", "asset", "amount"], properties: { type: { const: "balanceChangedBy" }, account: id, asset: id, amount: signedAmount } },
         { type: "object", additionalProperties: false, required: ["type", "step"], properties: { type: { enum: ["stepSucceeded", "transactionConfirmed"] }, step: id } },
