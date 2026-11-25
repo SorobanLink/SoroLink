@@ -30,6 +30,7 @@ export const scenarioSchemaV1 = {
     version: { type: "integer", minimum: 1, maximum: 2_147_483_647 },
     name: { type: "string", minLength: 1, maxLength: 120 },
     description: { type: "string", minLength: 1, maxLength: 500 },
+    baseFeeStroops: { type: "integer", minimum: 100, maximum: 100_000 },
     network: { const: "testnet" },
     accounts: {
       type: "array", minItems: 1, maxItems: SCENARIO_LIMITS.accounts,
