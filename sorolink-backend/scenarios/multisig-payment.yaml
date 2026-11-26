@@ -1,0 +1,48 @@
+schemaVersion: 1
+id: multisig-payment
+version: 1
+name: Multi-signature payment
+description: Adds a co-signer to an account using setOptions, then submits a payment signed by both keys and verifies the transaction confirms on-chain.
+network: testnet
+accounts:
+  - id: sender
+    generate: true
+    fund: true
+  - id: cosigner
+    generate: true
+    fund: true
+  - id: recipient
+    generate: true
+    fund: true
+assets:
+  - id: xlm
+    type: native
+steps:
+  - id: add-cosigner
+    type: setOptions
+    account: sender
+    signer:
+      key: cosigner
+      weight: 1
+    thresholds:
+      low: 2
+      medium: 2
+      high: 2
+  - id: multisig-payment
+    type: payment
+    from: sender
+    to: recipient
+    asset: xlm
+    amount: "5"
+    signers:
+      - sender
+      - cosigner
+assertions:
+  - type: stepSucceeded
+    step: add-cosigner
+  - type: stepSucceeded
+    step: multisig-payment
+  - type: balanceChangedBy
+    account: recipient
+    asset: xlm
+    amount: "5"
