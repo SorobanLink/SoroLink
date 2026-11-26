@@ -68,6 +68,11 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  /** Run all bundled scenarios in parallel (#72). */
+  all?: boolean;
+  /** Max concurrent scenarios for --parallel (1–10, default 4) (#72). */
+  concurrency?: number;
+  parallel?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,10 +152,18 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      all: { type: "boolean" },
+      parallel: { type: "boolean" },
+      concurrency: { type: "string" },
     },
     allowPositionals: true,
     strict: false,
   });
+
+  const rawConcurrency = typeof values.concurrency === "string" ? parseInt(values.concurrency, 10) : NaN;
+  const concurrency = Number.isFinite(rawConcurrency) && rawConcurrency >= 1 && rawConcurrency <= 10
+    ? rawConcurrency
+    : 4;
 
   return {
     command: positionals[0],
@@ -163,6 +176,9 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      all: Boolean(values.all),
+      parallel: Boolean(values.parallel),
+      concurrency,
     },
     failFast: Boolean(values["fail-fast"]),
   };
@@ -959,6 +975,44 @@ async function completionsCommand(shell: string): Promise<number> {
   return 0;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// #72 — parallel run
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function runParallelCommand(ids: string[], options: CliOptions): Promise<number> {
+  const concurrency = options.concurrency ?? 4;
+  const results: Array<{ id: string; status: "passed" | "failed" | "error"; error?: string }> = [];
+  const queue = [...ids];
+
+  async function worker(): Promise<void> {
+    while (queue.length > 0) {
+      const id = queue.shift();
+      if (!id) return;
+      try {
+        const code = await runCommand(id, { ...options, output: "json" }, false);
+        results.push({ id, status: code === 0 ? "passed" : "failed" });
+      } catch (err) {
+        results.push({ id, status: "error", error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+
+  if (options.output === "json") {
+    console.log(JSON.stringify(results, null, 2));
+  } else {
+    for (const r of results) {
+      const icon = r.status === "passed" ? "✓" : "✗";
+      console.log(`${icon} ${r.id}${r.error ? `: ${r.error}` : ""}`);
+    }
+    const failed = results.filter((r) => r.status !== "passed").length;
+    console.log(`\n${results.length - failed}/${results.length} passed`);
+  }
+
+  return results.some((r) => r.status !== "passed") ? 1 : 0;
+}
+
 export async function main(): Promise<number> {
   const { command, args, options } = parseCliArgs();
 
@@ -1030,6 +1084,18 @@ export async function main(): Promise<number> {
         console.error("Error: Unexpected argument(s) for run command");
         console.error("Usage: sorolink run <scenario-id> or sorolink run <file>");
         return 1;
+      }
+      if (options.all) {
+        const registry = createScenarioRegistry();
+        const ids = registry.list().map((s) => s.id);
+        if (ids.length === 0) {
+          console.error("No bundled scenarios found.");
+          return 1;
+        }
+        if (options.parallel) {
+          return runParallelCommand(ids, options);
+        }
+        return runSuiteCommand(ids, options, failFast);
       }
       return runCommand(args[0], options, false);
     case "run-suite":
