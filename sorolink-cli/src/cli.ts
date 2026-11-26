@@ -605,6 +605,7 @@ async function validateDirectoryCommand(dirPath: string, options: CliOptions): P
           }
         }
       }
+      if (total === 0) console.warn(`Warning: no .yaml or .json files found in ${absolute}`);
       console.log(`\n${total} file(s) processed: ${passed} valid, ${failed} failed`);
     }
     return ok ? 0 : 1;
