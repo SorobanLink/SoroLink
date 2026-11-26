@@ -87,7 +87,9 @@ SoroLink includes 13 bundled scenarios for Testnet integration testing:
 
 Each run generates fresh Testnet accounts, so repeated executions remain
 isolated from previous runs. See [SCENARIOS.md](sorolink-docs/SCENARIOS.md) for
-complete scenario documentation.
+complete scenario documentation and
+[LIFECYCLE_ISSUED_ASSET_PAYMENT.md](sorolink-docs/LIFECYCLE_ISSUED_ASSET_PAYMENT.md)
+for a step-by-step walkthrough of the issued-asset payment flow.
 
 ## How a run works
 
