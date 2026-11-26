@@ -68,6 +68,8 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  /** Overrides SOROLINK_BACKEND_URL when provided via --backend-url <url> (#76). */
+  backendUrl?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,10 +149,16 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      "backend-url": { type: "string" },
     },
     allowPositionals: true,
     strict: false,
   });
+
+  const backendUrl =
+    (typeof values["backend-url"] === "string" && values["backend-url"].trim()
+      ? values["backend-url"].trim()
+      : undefined) ?? process.env.SOROLINK_BACKEND_URL;
 
   return {
     command: positionals[0],
@@ -163,6 +171,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      backendUrl,
     },
     failFast: Boolean(values["fail-fast"]),
   };
@@ -582,8 +591,9 @@ async function runCommand(target: string, options: CliOptions): Promise<number> 
     options,
     async (signal) => {
       // Execute scenario on Stellar Testnet
+      const horizonUrl = options.backendUrl ?? "https://horizon-testnet.stellar.org";
       const gateway = new StellarTestnetGateway(
-        "https://horizon-testnet.stellar.org",
+        horizonUrl,
         "https://friendbot.stellar.org",
       );
 
@@ -730,8 +740,9 @@ async function runSuiteCommand(
 
         let result: SuiteScenarioResult;
         try {
+          const horizonUrl = options.backendUrl ?? "https://horizon-testnet.stellar.org";
           const gateway = new StellarTestnetGateway(
-            "https://horizon-testnet.stellar.org",
+            horizonUrl,
             "https://friendbot.stellar.org",
           );
           // Per-scenario isolated execution with progress callbacks in human mode
