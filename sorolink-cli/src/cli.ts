@@ -105,6 +105,7 @@ Usage:
   sorolink validate <file>                       Validate a scenario file
   sorolink validate --stdin --format <format>    Validate a scenario from standard input
   sorolink validate-directory <dir>              Validate scenario files in a directory
+  sorolink version                               Print CLI version
   sorolink run <scenario-id>                     Run a bundled scenario
   sorolink run <file>                            Run a scenario from file
 
