@@ -1486,3 +1486,85 @@ describe("Scenario Trustline Filtering, Copy-to-Clipboard, and Run Timestamps (#
     expect(screen.queryByTestId("run-completed")).toBeNull();
   });
 });
+
+describe("Scenario search by keyword (#7)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockSearchParams = new URLSearchParams();
+    vi.spyOn(api, "listScenarios").mockResolvedValue(mockScenarios);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    mockSearchParams = new URLSearchParams();
+  });
+
+  async function renderLoaded() {
+    render(<Dashboard />);
+    await waitFor(() => {
+      expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+    });
+    return screen.getByRole("searchbox", { name: "Search scenarios by name, ID, or description" });
+  }
+
+  it("renders an accessible, labelled search input above the scenario list", async () => {
+    const input = await renderLoaded();
+    expect(input.getAttribute("type")).toBe("search");
+    expect(screen.getByLabelText("Search scenarios by name, ID, or description")).toBe(input);
+    const grid = screen.getByRole("tabpanel");
+    expect(input.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("filters in real time by case-insensitive substring of the scenario ID", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "MISSING-TRUST" } });
+
+    expect(screen.getByText("01 AVAILABLE")).toBeDefined();
+    expect(screen.getAllByText("Missing trustline").length).toBeGreaterThan(0);
+    expect(screen.queryByText("XLM payment")).toBeNull();
+    expect(screen.queryByText("Issued asset payment")).toBeNull();
+  });
+
+  it("filters by case-insensitive substring of the description and updates the count", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "testusd" } });
+
+    expect(screen.getByText("01 AVAILABLE")).toBeDefined();
+    expect(screen.getAllByText("Issued asset payment").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Missing trustline")).toBeNull();
+
+    fireEvent.change(input, { target: { value: "RECIPIENT" } });
+    expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+  });
+
+  it("restores the full list when the input is cleared", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "xlm-payment" } });
+    expect(screen.getByText("01 AVAILABLE")).toBeDefined();
+
+    fireEvent.change(input, { target: { value: "" } });
+    expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+    expect(screen.getAllByText("XLM payment").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Issued asset payment").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Missing trustline").length).toBeGreaterThan(0);
+  });
+
+  it("restores the full list via the Clear search button", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "trustline" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect((input as HTMLInputElement).value).toBe("");
+    expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+  });
+
+  it("shows a helpful message when nothing matches", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "no-such-scenario" } });
+
+    expect(screen.getByText("00 AVAILABLE")).toBeDefined();
+    expect(screen.getByText("No scenarios found")).toBeDefined();
+    expect(screen.getByText(/No scenarios match "no-such-scenario"/)).toBeDefined();
+  });
+});
