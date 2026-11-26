@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile as readFilePromises } from "node:fs/promises";
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync, existsSync, readFileSync } from "node:fs";
 
 import { extname, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -93,6 +93,37 @@ function createSpinner(enabled: boolean): { update(label: string): void; stop():
       process.stdout.write("\r\x1b[K");
     },
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RC config file (#68)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RcConfig {
+  backendUrl?: string;
+  outputFormat?: "human" | "json";
+  timeout?: number;
+  retries?: number;
+}
+
+function loadRcConfig(): RcConfig {
+  const candidates = [".sorolinkrc", ".sorolinkrc.json", ".sorolinkrc.yaml", ".sorolinkrc.yml"];
+  for (const name of candidates) {
+    if (!existsSync(name)) continue;
+    try {
+      const text = readFileSync(name, "utf-8");
+      const parsed: unknown = name.endsWith(".yaml") || name.endsWith(".yml")
+        ? parseYaml(text)
+        : JSON.parse(text);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as RcConfig;
+      }
+    } catch {
+      console.warn(`Warning: could not parse ${name} — ignoring`);
+    }
+    break;
+  }
+  return {};
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1016,7 +1047,13 @@ async function completionsCommand(shell: string): Promise<number> {
 }
 
 export async function main(): Promise<number> {
-  const { command, args, options } = parseCliArgs();
+  const rc = loadRcConfig();
+  const { command, args, options: cliOptions } = parseCliArgs();
+  // Priority: CLI flags > env vars (handled inline) > rc file
+  const options: CliOptions = {
+    output: cliOptions.output ?? (rc.outputFormat as CliOptions["output"]),
+    ...cliOptions,
+  };
 
   if (options.version) {
     showVersion();
