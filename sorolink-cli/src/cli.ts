@@ -116,6 +116,7 @@ Options:
   --sort <field>      Sort results: id
   --stdin             Read the scenario definition from standard input
   --format <format>   Input format for standard input: json or yaml (required with --stdin)
+  --no-color          Disable ANSI colour codes (also: NO_COLOR=1 env var)
   --help              Show this help message
   --version           Show version information
 
