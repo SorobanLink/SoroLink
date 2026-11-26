@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile as readFilePromises } from "node:fs/promises";
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync, watch as fsWatch } from "node:fs";
 
 import { extname, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -68,6 +68,8 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  /** Re-run scenario on file change (#71). */
+  watch?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,6 +149,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      watch: { type: "boolean" },
     },
     allowPositionals: true,
     strict: false,
@@ -163,6 +166,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      watch: Boolean(values.watch),
     },
     failFast: Boolean(values["fail-fast"]),
   };
@@ -959,6 +963,34 @@ async function completionsCommand(shell: string): Promise<number> {
   return 0;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// #71 — watch mode
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function watchCommand(target: string, options: CliOptions): Promise<number> {
+  const absPath = resolve(target);
+  console.log(`Watching ${absPath} — press Ctrl+C to stop\n`);
+
+  let running = false;
+  const run = async (): Promise<void> => {
+    if (running) return;
+    running = true;
+    console.log(`\n${"─".repeat(60)}`);
+    console.log(`Re-running: ${new Date().toLocaleTimeString()}`);
+    console.log("─".repeat(60));
+    await runCommand(target, options, true).catch(() => {});
+    running = false;
+  };
+
+  await run();
+
+  fsWatch(absPath, { persistent: true }, () => { void run(); });
+
+  return new Promise<number>((resolve) => {
+    process.on("SIGINT", () => { console.log("\nWatch stopped."); resolve(0); });
+  });
+}
+
 export async function main(): Promise<number> {
   const { command, args, options } = parseCliArgs();
 
@@ -1030,6 +1062,13 @@ export async function main(): Promise<number> {
         console.error("Error: Unexpected argument(s) for run command");
         console.error("Usage: sorolink run <scenario-id> or sorolink run <file>");
         return 1;
+      }
+      if (options.watch) {
+        if (options.output === "json") {
+          console.error(JSON.stringify({ error: { message: "--watch is incompatible with --output json" } }));
+          return 1;
+        }
+        return watchCommand(args[0], options);
       }
       return runCommand(args[0], options, false);
     case "run-suite":
