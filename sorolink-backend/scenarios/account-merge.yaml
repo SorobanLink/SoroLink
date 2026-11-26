@@ -1,0 +1,28 @@
+schemaVersion: 1
+id: account-merge
+version: 1
+name: Account merge
+description: Sends all remaining XLM from a source account to a destination account and removes the source account from the ledger.
+network: testnet
+accounts:
+  - id: source
+    generate: true
+    fund: true
+  - id: destination
+    generate: true
+    fund: true
+assets:
+  - id: xlm
+    type: native
+steps:
+  - id: merge
+    type: accountMerge
+    account: source
+    into: destination
+assertions:
+  - type: stepSucceeded
+    step: merge
+  - type: accountNotExist
+    account: source
+  - type: accountExists
+    account: destination
