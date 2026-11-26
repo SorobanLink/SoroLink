@@ -68,6 +68,8 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  /** Enables debug-level output to stderr; secrets are never printed (#70). */
+  verbose?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,6 +149,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      verbose: { type: "boolean" },
     },
     allowPositionals: true,
     strict: false,
@@ -163,6 +166,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      verbose: Boolean(values.verbose),
     },
     failFast: Boolean(values["fail-fast"]),
   };
@@ -203,11 +207,25 @@ function buildExecutionOptions(
     const m = markers(options.ascii ?? false);
     execOptions.onStep = (step) => {
       console.log(`  ${statusMarker(step.status, m)} step  ${step.id}: ${step.message}`);
+      if (options.verbose) {
+        process.stderr.write(`[verbose] step ${step.id} status=${step.status}\n`);
+      }
     };
     execOptions.onAssertion = (assertion) => {
       console.log(
         `  ${statusMarker(assertion.status, m)} check ${assertion.type}: ${assertion.message}`,
       );
+      if (options.verbose) {
+        process.stderr.write(`[verbose] assertion ${assertion.type} status=${assertion.status} actual=${String(assertion.actual ?? "")} expected=${String(assertion.expected ?? "")}\n`);
+      }
+    };
+  } else if (options.verbose) {
+    // In json/non-human mode verbose still writes step traces to stderr.
+    execOptions.onStep = (step) => {
+      process.stderr.write(`[verbose] step ${step.id} status=${step.status}\n`);
+    };
+    execOptions.onAssertion = (assertion) => {
+      process.stderr.write(`[verbose] assertion ${assertion.type} status=${assertion.status}\n`);
     };
   }
   return execOptions;
