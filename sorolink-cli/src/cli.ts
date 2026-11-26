@@ -50,7 +50,7 @@ const MAX_REPORT_FILE_BYTES = 5 * 1024 * 1024;
 
 /** Default overall run timeout in milliseconds (#55). */
 export const DEFAULT_CLI_TIMEOUT_MS = 120_000;
-export const MIN_CLI_TIMEOUT_MS = 1;
+export const MIN_CLI_TIMEOUT_MS = 1_000;
 export const MAX_CLI_TIMEOUT_MS = 600_000;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,6 +68,8 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  /** Overrides DEFAULT_CLI_TIMEOUT_MS when provided via --timeout <ms> (#77). */
+  timeoutMs?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,7 +128,7 @@ Examples:
   sorolink validate-directory ./scenarios
   sorolink run xlm-payment
   sorolink run ./my-scenario.yaml --output json
-  sorolink run xlm-payment --timeout-ms 30000
+  sorolink run xlm-payment --timeout 30000
   sorolink run-suite xlm-payment path-payment --fail-fast
 
 Documentation: https://github.com/SoroLinkorg/SoroLink
@@ -147,10 +149,21 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      timeout: { type: "string" },
     },
     allowPositionals: true,
     strict: false,
   });
+
+  let timeoutMs: number | undefined;
+  if (typeof values.timeout === "string") {
+    const parsed = Number(values.timeout);
+    if (!Number.isInteger(parsed) || parsed < 1000 || parsed > 600_000) {
+      console.error("Error: --timeout must be an integer between 1000 and 600000 (ms)");
+      process.exit(1);
+    }
+    timeoutMs = parsed;
+  }
 
   return {
     command: positionals[0],
@@ -163,6 +176,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      timeoutMs,
     },
     failFast: Boolean(values["fail-fast"]),
   };
