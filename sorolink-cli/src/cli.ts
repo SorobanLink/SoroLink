@@ -73,6 +73,29 @@ interface CliOptions {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Progress spinner (#73)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+function createSpinner(enabled: boolean): { update(label: string): void; stop(): void } {
+  if (!enabled) return { update: () => {}, stop: () => {} };
+  let frame = 0;
+  let label = "";
+  const timer = setInterval(() => {
+    process.stdout.write(`\r${SPINNER_FRAMES[frame % SPINNER_FRAMES.length]} ${label}  `);
+    frame++;
+  }, 80);
+  return {
+    update(newLabel: string) { label = newLabel; },
+    stop() {
+      clearInterval(timer);
+      process.stdout.write("\r\x1b[K");
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Output and error helpers (#54, #55, #56)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -198,10 +221,11 @@ async function loadScenarioFile(filePath: string): Promise<ValidatedScenario> {
 // Execution helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Build a LedgerExecutionOptions object that prints progress in human mode (#66). */
+/** Build a LedgerExecutionOptions object that prints progress in human mode (#66, #73). */
 function buildExecutionOptions(
   options: CliOptions,
   signal?: AbortSignal,
+  spinner?: ReturnType<typeof createSpinner>,
 ): LedgerExecutionOptions {
   const execOptions: LedgerExecutionOptions = {
     stepTimeoutMs: BUNDLED_SCENARIO_DIR_TIMEOUT_MS,
@@ -210,9 +234,11 @@ function buildExecutionOptions(
   if (options.output === "human") {
     const m = markers(options.ascii ?? false);
     execOptions.onStep = (step) => {
+      spinner?.stop();
       console.log(`  ${statusMarker(step.status, m)} step  ${step.id}: ${step.message}`);
     };
     execOptions.onAssertion = (assertion) => {
+      spinner?.stop();
       console.log(
         `  ${statusMarker(assertion.status, m)} check ${assertion.type}: ${assertion.message}`,
       );
@@ -618,8 +644,12 @@ async function runCommand(target: string, options: CliOptions): Promise<number> 
         console.log(`ID: ${scenario.id} (v${scenario.version})\n`);
       }
 
-      const execOptions = buildExecutionOptions(options, signal);
-      return gateway.execute(scenario, execOptions);
+      const spinner = createSpinner(options.output !== "json" && Boolean(process.stdout.isTTY));
+      spinner.update("starting…");
+      const execOptions = buildExecutionOptions(options, signal, spinner);
+      const result = await gateway.execute(scenario, execOptions);
+      spinner.stop();
+      return result;
     },
   );
 
