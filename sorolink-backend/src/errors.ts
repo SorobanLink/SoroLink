@@ -32,7 +32,7 @@ export function horizonTimeoutError(
   const outcome = retries > 0 ? `timed out and failed after ${retries} retries` : "timed out";
   return new SafeRunError({
     code: "HORIZON_UNAVAILABLE",
-    message: `${service} ${outcome}. ${TESTNET_RETRY_SUGGESTION}`,
+    message: `${service} ${outcome}.`,
     category: "network",
     retryable: true,
   });
