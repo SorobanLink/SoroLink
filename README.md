@@ -376,7 +376,10 @@ smoke test is documented in the [backend README](sorolink-backend/README.md).
 The default `PERSISTENCE_MODE=disabled` configuration keeps runtime state in
 memory. Published scenario catalogue persistence can be enabled with PostgreSQL
 after applying the checked migrations and configuring the required database
-roles. See the [persistence guide](sorolink-docs/PERSISTENCE.md) before enabling it.
+roles. See the [persistence guide](sorolink-docs/PERSISTENCE.md) for the contract and
+the [database bootstrap guide](sorolink-docs/DATABASE_BOOTSTRAP.md) for a
+step-by-step walkthrough of creating the database, running
+`bootstrap-roles.sql`, applying migrations, and verifying the setup.
 
 ## Deployment
 
