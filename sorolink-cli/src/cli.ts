@@ -53,6 +53,9 @@ export const DEFAULT_CLI_TIMEOUT_MS = 120_000;
 export const MIN_CLI_TIMEOUT_MS = 1;
 export const MAX_CLI_TIMEOUT_MS = 600_000;
 
+/** Networks the CLI refuses to target — exported for unit-test coverage (#65). */
+export const REJECTED_NETWORKS = new Set(["mainnet"]);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared types
 // ─────────────────────────────────────────────────────────────────────────────
