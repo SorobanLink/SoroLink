@@ -109,7 +109,7 @@ Usage:
   sorolink run <file>                            Run a scenario from file
 
 Options:
-  --output <format>   Output format: human (default) or json
+  --output <format>   Output format: human (default), json, or table
   --search <term>     Filter scenarios by ID, name, or description (case-insensitive)
   --sort <field>      Sort results: id
   --stdin             Read the scenario definition from standard input
