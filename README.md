@@ -64,6 +64,8 @@ SoroLink is useful for:
 
 Unlike Stellar Lab, which requires manual step-through and copy/paste workflow, SoroLink executes multi-step flows declaratively and generates structured reports. Unlike the Stellar Quickstart Docker image, SoroLink focuses on scenario-driven testing rather than node operation. Unlike hand-written SDK tests, SoroLink provides repeatable scenario definitions with expected-failure assertions and CI-friendly JSON output.
 
+For a detailed side-by-side breakdown of automation, repeatability, CI support, error messages, scenario sharing, and learning curve, see [sorolink-docs/COMPARISON.md](sorolink-docs/COMPARISON.md).
+
 ## Bundled scenarios
 
 SoroLink includes 13 bundled scenarios for Testnet integration testing:
