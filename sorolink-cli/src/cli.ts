@@ -68,6 +68,8 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  /** File path for JUnit XML output; "-" writes to stdout (#69). */
+  junit?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,6 +149,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      junit: { type: "string" },
     },
     allowPositionals: true,
     strict: false,
@@ -163,6 +166,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      junit: typeof values.junit === "string" ? values.junit : undefined,
     },
     failFast: Boolean(values["fail-fast"]),
   };
@@ -624,6 +628,52 @@ async function runCommand(target: string, options: CliOptions): Promise<number> 
   }
 
   return report.status === "passed" ? 0 : 1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #69 — JUnit XML generation
+// ─────────────────────────────────────────────────────────────────────────────
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/** Build a JUnit XML document from one or more scenario run reports (#69). */
+export function generateJunitXml(
+  runs: Array<ReturnType<typeof buildRunReport>>,
+): string {
+  const totalTests = runs.reduce((n, r) => n + r.steps.length + r.assertions.length, 0);
+  const totalFailures = runs.reduce(
+    (n, r) =>
+      n +
+      r.steps.filter((s) => s.status !== "passed").length +
+      r.assertions.filter((a) => a.status !== "passed").length,
+    0,
+  );
+
+  const suites = runs.map((r) => {
+    const cases = [
+      ...r.steps.map((s) => {
+        const name = escapeXml(`step: ${s.id}`);
+        const msg = escapeXml(s.message ?? "");
+        return s.status === "passed"
+          ? `    <testcase name="${name}" classname="${escapeXml(r.scenarioId)}" />`
+          : `    <testcase name="${name}" classname="${escapeXml(r.scenarioId)}"><failure message="${msg}" /></testcase>`;
+      }),
+      ...r.assertions.map((a) => {
+        const name = escapeXml(`assertion: ${a.type}`);
+        const msg = escapeXml(a.message ?? "");
+        return a.status === "passed"
+          ? `    <testcase name="${name}" classname="${escapeXml(r.scenarioId)}" />`
+          : `    <testcase name="${name}" classname="${escapeXml(r.scenarioId)}"><failure message="${msg}" /></testcase>`;
+      }),
+    ];
+    const failures = r.steps.filter((s) => s.status !== "passed").length +
+      r.assertions.filter((a) => a.status !== "passed").length;
+    return `  <testsuite name="${escapeXml(r.scenarioId)}" tests="${cases.length}" failures="${failures}">\n${cases.join("\n")}\n  </testsuite>`;
+  });
+
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuites tests="${totalTests}" failures="${totalFailures}">\n${suites.join("\n")}\n</testsuites>\n`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
