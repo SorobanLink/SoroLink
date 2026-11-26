@@ -259,7 +259,7 @@ describe("StellarTestnetGateway Friendbot bounded retry", () => {
       const definition: ValidatedScenario = {
         schemaVersion: 1,
         id: "path-payment-strict-send-test",
-        version: 1,
+        version: "1.0.0",
         name: "Strict-send test",
         description: "Exercises strict-send operation construction.",
         network: "testnet",
@@ -327,7 +327,7 @@ describe("StellarTestnetGateway Friendbot bounded retry", () => {
     const accountScenario: ValidatedScenario = {
       schemaVersion: 1,
       id: "horizon-account-retry",
-      version: 1,
+      version: "1.0.0",
       name: "Horizon account retry",
       description: "Exercises Horizon account loading retries",
       network: "testnet",
@@ -880,7 +880,7 @@ describe("StellarTestnetGateway Friendbot bounded retry", () => {
     const scenario: ValidatedScenario = {
       schemaVersion: 1,
       id: "funding-retry-scenario",
-      version: 1,
+      version: "1.0.0",
       name: "Funding retry scenario",
       description: "Verifies scenario execution with transient friendbot failure",
       network: "testnet",
@@ -926,7 +926,7 @@ describe("StellarTestnetGateway Friendbot bounded retry", () => {
     const scenario: ValidatedScenario = {
       schemaVersion: 1,
       id: "funding-fail-scenario",
-      version: 1,
+      version: "1.0.0",
       name: "Funding fail scenario",
       description: "Verifies scenario failure when friendbot retries are exhausted",
       network: "testnet",
@@ -970,7 +970,7 @@ describe("StellarTestnetGateway Friendbot bounded retry", () => {
       return {
         schemaVersion: 1,
         id: "funding-concurrency-scenario",
-        version: 1,
+        version: "1.0.0",
         name: "Funding concurrency scenario",
         description: "Verifies bounded concurrent Friendbot funding",
         network: "testnet",
@@ -1143,7 +1143,7 @@ describe("StellarTestnetGateway Friendbot bounded retry", () => {
       const scenario: ValidatedScenario = {
         schemaVersion: 1,
         id: "timing-timeout-scenario",
-        version: 1,
+        version: "1.0.0",
         name: "Timing timeout scenario",
         description: "Verifies timing is recorded for a timed-out step",
         network: "testnet",
@@ -1169,7 +1169,7 @@ describe("StellarTestnetGateway Friendbot bounded retry", () => {
       return {
         schemaVersion: 1,
         id,
-        version: 1,
+        version: "1.0.0",
         name: "Timing scenario",
         description: "Verifies step timing evidence",
         network: "testnet",
@@ -1200,7 +1200,7 @@ describe("Issue #96 — feeCharged captured from confirmed transaction", () => {
     );
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example");
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "fee-test", version: 1, name: "Fee test", description: "Fee test", network: "testnet",
+      schemaVersion: 1, id: "fee-test", version: "1.0.0", name: "Fee test", description: "Fee test", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "sender", generate: true, fund: false }, { id: "receiver", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1224,7 +1224,7 @@ describe("Issue #96 — feeCharged captured from confirmed transaction", () => {
     );
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example");
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "fee-absent", version: 1, name: "Fee absent", description: "Fee absent", network: "testnet",
+      schemaVersion: 1, id: "fee-absent", version: "1.0.0", name: "Fee absent", description: "Fee absent", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "sender", generate: true, fund: false }, { id: "receiver", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1249,7 +1249,7 @@ describe("Issue #96 — feeCharged captured from confirmed transaction", () => {
     );
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example");
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "fee-precision", version: 1, name: "Fee precision", description: "Fee precision", network: "testnet",
+      schemaVersion: 1, id: "fee-precision", version: "1.0.0", name: "Fee precision", description: "Fee precision", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "sender", generate: true, fund: false }, { id: "receiver", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1270,7 +1270,7 @@ describe("Issue #95 — accountMissing assertion", () => {
     vi.spyOn(Horizon.Server.prototype, "loadAccount").mockRejectedValue(horizonNotFound());
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example");
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "acct-missing", version: 1, name: "Acct missing", description: "Acct missing", network: "testnet",
+      schemaVersion: 1, id: "acct-missing", version: "1.0.0", name: "Acct missing", description: "Acct missing", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "unfunded", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1287,7 +1287,7 @@ describe("Issue #95 — accountMissing assertion", () => {
     );
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example");
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "acct-found", version: 1, name: "Acct found", description: "Acct found", network: "testnet",
+      schemaVersion: 1, id: "acct-found", version: "1.0.0", name: "Acct found", description: "Acct found", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "funded", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1302,7 +1302,7 @@ describe("Issue #95 — accountMissing assertion", () => {
     vi.spyOn(Horizon.Server.prototype, "loadAccount").mockRejectedValue(horizonTimeout());
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example", { horizonRetry: { maxRetries: 0 } });
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "acct-timeout", version: 1, name: "Acct timeout", description: "Acct timeout", network: "testnet",
+      schemaVersion: 1, id: "acct-timeout", version: "1.0.0", name: "Acct timeout", description: "Acct timeout", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "unfunded", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1316,7 +1316,7 @@ describe("Issue #95 — accountMissing assertion", () => {
     vi.spyOn(Horizon.Server.prototype, "loadAccount").mockRejectedValue(horizonServiceError(503));
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example", { horizonRetry: { maxRetries: 0 } });
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "acct-503", version: 1, name: "Acct 503", description: "Acct 503", network: "testnet",
+      schemaVersion: 1, id: "acct-503", version: "1.0.0", name: "Acct 503", description: "Acct 503", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "unfunded", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1363,7 +1363,7 @@ describe("Issue #94 — trustlineLimitEquals assertion", () => {
 
   function trustlineLimitScenario(assertedLimit: string): ValidatedScenario {
     return {
-      schemaVersion: 1, id: "tl-limit-test", version: 1, name: "TL limit test", description: "TL limit test", network: "testnet",
+      schemaVersion: 1, id: "tl-limit-test", version: "1.0.0", name: "TL limit test", description: "TL limit test", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "issuer", generate: true, fund: false }, { id: "recipient", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }, { id: "tok", type: "issued", code: "LIMITED", issuer: "issuer" }],
@@ -1421,7 +1421,7 @@ describe("Issue #93 — feeAwareNativeBalanceDelta assertion", () => {
     );
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example");
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "fee-delta", version: 1, name: "Fee delta", description: "Fee delta", network: "testnet",
+      schemaVersion: 1, id: "fee-delta", version: "1.0.0", name: "Fee delta", description: "Fee delta", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "sender", generate: true, fund: false }, { id: "receiver", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1449,7 +1449,7 @@ describe("Issue #93 — feeAwareNativeBalanceDelta assertion", () => {
     );
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example");
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "fee-delta-nofee", version: 1, name: "Fee delta no fee", description: "Fee delta no fee", network: "testnet",
+      schemaVersion: 1, id: "fee-delta-nofee", version: "1.0.0", name: "Fee delta no fee", description: "Fee delta no fee", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "sender", generate: true, fund: false }, { id: "receiver", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1478,7 +1478,7 @@ describe("Issue #93 — feeAwareNativeBalanceDelta assertion", () => {
     );
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example");
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "fee-delta-recipient", version: 1, name: "Fee delta recipient", description: "Fee delta recipient", network: "testnet",
+      schemaVersion: 1, id: "fee-delta-recipient", version: "1.0.0", name: "Fee delta recipient", description: "Fee delta recipient", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "sender", generate: true, fund: false }, { id: "receiver", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],
@@ -1509,7 +1509,7 @@ describe("Issue #93 — feeAwareNativeBalanceDelta assertion", () => {
     );
     const gateway = new StellarTestnetGateway("https://horizon.example", "https://friendbot.example");
     const scenario: ValidatedScenario = {
-      schemaVersion: 1, id: "fee-delta-mismatch", version: 1, name: "Fee delta mismatch", description: "Fee delta mismatch", network: "testnet",
+      schemaVersion: 1, id: "fee-delta-mismatch", version: "1.0.0", name: "Fee delta mismatch", description: "Fee delta mismatch", network: "testnet",
       contentHash: "sha256:" + "0".repeat(64),
       accounts: [{ id: "sender", generate: true, fund: false }, { id: "receiver", generate: true, fund: false }],
       assets: [{ id: "xlm", type: "native" }],

@@ -286,7 +286,7 @@ function buildRunReport(
   execution: LedgerExecution,
 ): {
   scenarioId: string;
-  scenarioVersion: number;
+  scenarioVersion: string;
   status: "passed" | "failed";
   steps: LedgerExecution["steps"];
   assertions: LedgerExecution["assertions"];

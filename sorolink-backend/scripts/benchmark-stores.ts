@@ -12,7 +12,7 @@ const windowMs = 60_000;
 
 function report(id: string, terminal: boolean): RunReport {
   return {
-    id, scenarioId: "synthetic-payment", scenarioVersion: 1, scenarioSchemaVersion: 1,
+    id, scenarioId: "synthetic-payment", scenarioVersion: "1.0.0", scenarioSchemaVersion: 1,
     scenarioContentHash: `sha256:${"a".repeat(64)}`, network: "testnet",
     status: terminal ? "passed" : "running", createdAt: new Date(epoch).toISOString(),
     ...(terminal ? { completedAt: new Date(epoch).toISOString() } : {}),

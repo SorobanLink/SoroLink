@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: account-missing
-version: 1
+version: "1.0.0"
 name: Unfunded account is absent
 description: Verify that a generated account that is never funded is absent on Testnet after a zero-operation scenario completes.
 network: testnet

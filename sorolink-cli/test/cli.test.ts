@@ -29,7 +29,7 @@ vi.mock("@sorolink/backend/stellar-gateway.js", () => ({
 const definition = {
   schemaVersion: 1,
   id: "test-scenario",
-  version: 1,
+  version: "1.0.0",
   name: "Test scenario",
   description: "A scenario used by CLI tests",
   network: "testnet",
@@ -52,16 +52,16 @@ const catalog = [{
 }];
 
 const multiCatalog = [
-  { id: "xlm-payment", version: 1, name: "XLM Payment", description: "Send XLM between accounts" },
-  { id: "missing-trustline", version: 1, name: "Missing Trustline", description: "Payment without a trustline" },
-  { id: "issued-asset-payment", version: 1, name: "Issued Asset Payment", description: "Issue and send TESTUSD" },
+  { id: "xlm-payment", version: "1.0.0", name: "XLM Payment", description: "Send XLM between accounts" },
+  { id: "missing-trustline", version: "1.0.0", name: "Missing Trustline", description: "Payment without a trustline" },
+  { id: "issued-asset-payment", version: "1.0.0", name: "Issued Asset Payment", description: "Issue and send TESTUSD" },
 ];
 
 const validJson = JSON.stringify(definition);
 const validYaml = [
   "schemaVersion: 1",
   "id: test-scenario",
-  "version: 1",
+  'version: "1.0.0"',
   "name: Test scenario",
   "description: A scenario used by CLI tests",
   "network: testnet",

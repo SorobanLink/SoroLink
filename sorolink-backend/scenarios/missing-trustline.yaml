@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: missing-trustline
-version: 1
+version: "1.0.0"
 name: Missing trustline
 description: Verify that an asset payment fails when the recipient has no trustline.
 network: testnet

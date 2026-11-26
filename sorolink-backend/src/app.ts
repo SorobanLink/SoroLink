@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 export type AppInstance = FastifyInstance & { runs: RunService };
 
@@ -24,7 +24,7 @@ import { FixedWindowRateLimiter } from "./rate-limiter.js";
 import { RunService, type RunLifecycleLogger } from "./run-service.js";
 import { InMemoryRunStore } from "./run-store.js";
 import { parseScenario, prepareScenario, canonicalJson } from "./scenario-loader.js";
-import { scenarioSchemaV1, ScenarioValidationError } from "./scenario-schema.js";
+import { scenarioSchemaV1, ScenarioValidationError, semverVersion } from "./scenario-schema.js";
 import { createScenarioRegistry } from "./scenarios.js";
 import { StellarTestnetGateway } from "./stellar-gateway.js";
 import { PersistenceCoordinator } from "./persistence.js";
@@ -37,7 +37,7 @@ const runBodySchema = {
   type: "object", additionalProperties: false, required: ["scenarioId"],
   properties: {
     scenarioId: { type: "string", minLength: 1, maxLength: 64, pattern: "^[a-z0-9-]+$" },
-    scenarioVersion: { type: "integer", minimum: 1, maximum: 2_147_483_647 },
+    scenarioVersion: semverVersion,
     inputs: { type: "object", additionalProperties: false, default: {} },
   },
 } as const;
@@ -68,6 +68,20 @@ const historyQuerySchema = {
   },
 } as const;
 
+/** Issue #41: runs listing pagination bounds. */
+const RUNS_PAGE_DEFAULT_LIMIT = 20;
+const RUNS_PAGE_MAX_LIMIT = 100;
+const RUNS_PAGE_MAX_OFFSET = 2_147_483_647;
+
+const runsListQuerySchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    limit: { type: "string", minLength: 1, maxLength: 10 },
+    offset: { type: "string", minLength: 1, maxLength: 10 },
+  },
+} as const;
+
 const exportQuerySchema = {
   type: "object",
   additionalProperties: false,
@@ -88,7 +102,19 @@ const IDEMPOTENCY_RETENTION_MS = 86_400_000;
 
 export function buildApp(options: BuildAppOptions): AppInstance {
   const clock = options.clock ?? Date.now;
-  const app = Fastify({ logger: options.logger ?? false, bodyLimit: options.config.bodyLimitBytes, ajv: { customOptions: { removeAdditional: false } } });
+  const app = Fastify({
+    // Issue #43: structured JSON logs (level, msg, timestamp, requestId) at LOG_LEVEL.
+    logger: options.logger ? structuredLoggerOptions(options.config.logLevel) : false,
+    // Issue #43: one correlation ID per request; a well-formed X-Request-ID header is honoured.
+    requestIdHeader: false,
+    requestIdLogLabel: "requestId",
+    genReqId: (request) => incomingRequestId(request.headers["x-request-id"]) ?? randomUUID(),
+    bodyLimit: options.config.bodyLimitBytes,
+    ajv: { customOptions: { removeAdditional: false } },
+  });
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("x-request-id", request.id);
+  });
   app.addContentTypeParser(["application/yaml", "application/x-yaml", "text/yaml"], { parseAs: "string" }, (_request, body, done) => done(null, body));
   // Issue #77: fastify's default text/plain parser would otherwise accept
   // (and then fail validation on) bodies with unsupported content types such
@@ -128,7 +154,10 @@ export function buildApp(options: BuildAppOptions): AppInstance {
   });
   const runs = new RunService(persistence.runStore ?? new InMemoryRunStore(options.config.maxStoredRuns, options.config.runRetentionMs, clock), ledger, {
     maxConcurrentRuns: options.config.maxConcurrentRuns, runTimeoutMs: options.config.runTimeoutMs, stepTimeoutMs: options.config.stepTimeoutMs,
-  }, clock, options.runLogger ?? app.log);
+  }, clock, options.runLogger ?? {
+    // Issue #43: lifecycle events carry runId, scenarioId, and the originating requestId.
+    info: (fields) => app.log.info(fields, fields.event),
+  });
 
   app.get("/health", async () => ({ status: "ok", network: "testnet" }));
   if (options.config.metricsEnabled) {
@@ -228,7 +257,7 @@ export function buildApp(options: BuildAppOptions): AppInstance {
   });
 
   // ── Issue #71: exact version run creation + Issue #72: idempotency ────────
-  app.post<{ Body: { scenarioId: string; scenarioVersion?: number; inputs?: Record<string, never> } }>("/api/v1/runs", { schema: { body: runBodySchema } }, async (request, reply) => {
+  app.post<{ Body: { scenarioId: string; scenarioVersion?: string; inputs?: Record<string, never> } }>("/api/v1/runs", { schema: { body: runBodySchema } }, async (request, reply) => {
     const { scenarioId, scenarioVersion } = request.body;
 
     // Resolve the scenario from the active catalogue source (issue #71).
@@ -236,7 +265,7 @@ export function buildApp(options: BuildAppOptions): AppInstance {
     if (persistence.repository) {
       // Published mode: resolve from the persistent catalogue.
       if (scenarioVersion !== undefined) {
-        scenario = await persistence.repository.version(scenarioId, scenarioVersion);
+        scenario = await persistence.repository.semanticVersion(scenarioId, scenarioVersion);
         if (!scenario) return reply.code(404).send(apiError("SCENARIO_VERSION_NOT_FOUND", `Scenario ${scenarioId} version ${scenarioVersion} is not available in the published catalogue.`, request.id));
       } else {
         scenario = await persistence.repository.latest(scenarioId);
@@ -299,6 +328,26 @@ export function buildApp(options: BuildAppOptions): AppInstance {
     return reply.code(202).send(await runs.start(scenario, request.id));
   });
 
+  // ── Issue #41: paginated runs listing ─────────────────────────────────────
+  app.get<{ Querystring: { limit?: string; offset?: string } }>("/api/v1/runs", { schema: { querystring: runsListQuerySchema } }, async (request, reply) => {
+    const { limit: rawLimit, offset: rawOffset } = request.query;
+    const limit = rawLimit === undefined ? RUNS_PAGE_DEFAULT_LIMIT : parseIntegerText(rawLimit, 1, RUNS_PAGE_MAX_LIMIT);
+    if (limit === undefined) {
+      return reply.code(400).send(apiError("INVALID_REQUEST", `limit must be an integer between 1 and ${RUNS_PAGE_MAX_LIMIT}.`, request.id, [`limit: received "${rawLimit}"`]));
+    }
+    const offset = rawOffset === undefined ? 0 : parseIntegerText(rawOffset, 0, RUNS_PAGE_MAX_OFFSET);
+    if (offset === undefined) {
+      return reply.code(400).send(apiError("INVALID_REQUEST", `offset must be an integer between 0 and ${RUNS_PAGE_MAX_OFFSET}.`, request.id, [`offset: received "${rawOffset}"`]));
+    }
+    const page = await runs.list(limit, offset);
+    return {
+      items: page.items.map((run) => withRetentionMetadata(run, options.config.runRetentionMs)),
+      limit,
+      offset,
+      ...(page.hasMore && { nextOffset: offset + page.items.length }),
+    };
+  });
+
   app.get<{ Params: { runId: string } }>("/api/v1/runs/:runId", async (request, reply) => {
     const run = await runs.get(request.params.runId);
     if (!run) return reply.code(404).send(apiError("RUN_NOT_FOUND", "The requested run does not exist.", request.id));
@@ -356,7 +405,7 @@ export function buildApp(options: BuildAppOptions): AppInstance {
  * change to a version number or content hash produces a different ETag,
  * regardless of the order in which items are returned from the database.
  */
-function catalogueETag(items: { id: string; version: number; contentHash: string }[]): string {
+function catalogueETag(items: { id: string; version: string; contentHash: string }[]): string {
   const sorted = [...items].sort((a, b) => a.id.localeCompare(b.id));
   const digest = createHash("sha256")
     .update(canonicalJson(sorted.map(({ id, version, contentHash }) => ({ id, version, contentHash }))))
@@ -413,6 +462,41 @@ function parseBoundedInt(value: string, minimum: number, maximum: number): numbe
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) return undefined;
   return parsed;
+}
+
+/** Issue #41: strict non-negative integer text (no signs, decimals, or exponents) within bounds. */
+function parseIntegerText(value: string, minimum: number, maximum: number): number | undefined {
+  if (!/^(0|[1-9][0-9]*)$/.test(value)) return undefined;
+  return parseBoundedInt(value, minimum, maximum);
+}
+
+// ── Issue #43: structured logging helpers ─────────────────────────────────
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
+
+/** Accept a proxy-supplied X-Request-ID only when it is a single, safe token. */
+function incomingRequestId(header: string | string[] | undefined): string | undefined {
+  return typeof header === "string" && REQUEST_ID_PATTERN.test(header) ? header : undefined;
+}
+
+/**
+ * Pino options for JSON log lines shaped as
+ * `{"level":"info","timestamp":"…","requestId":"…","msg":"…"}`. Request and
+ * response serializers keep only non-sensitive fields so headers (and any
+ * credentials or idempotency keys they carry) never reach the logs.
+ */
+function structuredLoggerOptions(level: string) {
+  return {
+    level,
+    messageKey: "msg",
+    base: undefined,
+    timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
+    formatters: { level: (label: string) => ({ level: label }) },
+    serializers: {
+      req: (request: { method?: string; url?: string }) => ({ method: request.method, url: request.url?.split("?", 1)[0] }),
+      res: (response: { statusCode?: number }) => ({ statusCode: response.statusCode }),
+    },
+    redact: { paths: ["req.headers", "headers", "*.secret", "*.secretKey", "*.seed"], remove: true },
+  };
 }
 
 // ── Issue #76: run retention metadata ──────────────────────────────────────

@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: trustline-removal
-version: 1
+version: "1.0.0"
 name: Trustline removal
 description: Create an empty trustline and remove it by setting limit to zero.
 network: testnet

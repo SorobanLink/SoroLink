@@ -9,12 +9,14 @@ export interface ApiOperations {
   getScenario: { params: { scenarioId: string }; response: ValidatedScenario };
   /** Issue #70 — returns the canonical v1 scenario JSON Schema. */
   getScenarioSchemaV1: { response: Record<string, unknown> };
-  validateScenario: { body: ScenarioDefinition | string; response: { valid: true; scenarioId: string; scenarioVersion: number; schemaVersion: 1; contentHash: string } };
+  validateScenario: { body: ScenarioDefinition | string; response: { valid: true; scenarioId: string; scenarioVersion: string; schemaVersion: 1; contentHash: string } };
   listScenarioVersions: { params: { scenarioId: string }; query: { limit?: number; cursor?: number }; response: { items: ScenarioVersionSummary[]; nextCursor?: number } };
   getScenarioVersion: { params: { scenarioId: string; version: number }; response: ValidatedScenario };
   exportScenarioVersion: { params: { scenarioId: string; version: number }; query: { format?: "json" | "yaml" }; response: string };
   /** Issue #71 — scenarioVersion selects an exact published version or validates against the bundled version. Issue #72 — Idempotency-Key header deduplicates within the retention window. */
-  startCataloguedRun: { body: { scenarioId: string; scenarioVersion?: number; inputs?: Record<string, never> }; headers?: { "idempotency-key"?: string }; response: RunReport };
+  startCataloguedRun: { body: { scenarioId: string; scenarioVersion?: string; inputs?: Record<string, never> }; headers?: { "idempotency-key"?: string }; response: RunReport };
+  /** Issue #41 — offset-paginated runs listing, newest first. */
+  listRuns: { query: { limit?: number; offset?: number }; response: { items: RunReport[]; limit: number; offset: number; nextOffset?: number } };
   /** Issue #72 — Idempotency-Key header deduplicates within the retention window. */
   startDefinitionRun: { body: ScenarioDefinition | string; headers?: { "idempotency-key"?: string }; response: RunReport };
   getRun: { params: { runId: string }; response: RunReport };

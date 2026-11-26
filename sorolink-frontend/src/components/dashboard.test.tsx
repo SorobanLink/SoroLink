@@ -20,21 +20,21 @@ vi.mock("next/navigation", () => ({
 const mockScenarios: api.ScenarioSummary[] = [
   {
     id: "xlm-payment",
-    version: 1,
+    version: "1.0.0",
     name: "XLM payment",
     description: "Fund two Testnet accounts, send XLM, and verify the recipient balance.",
     contentHash: "hash1",
   },
   {
     id: "issued-asset-payment",
-    version: 1,
+    version: "1.0.0",
     name: "Issued asset payment",
     description: "Issue TESTUSD and send it to a recipient through a trustline.",
     contentHash: "hash2",
   },
   {
     id: "missing-trustline",
-    version: 1,
+    version: "1.0.0",
     name: "Missing trustline",
     description: "Verify that an asset payment fails when the recipient has no trustline.",
     contentHash: "hash3",
@@ -44,7 +44,7 @@ const mockScenarios: api.ScenarioSummary[] = [
 const mockRun: RunReport = {
   id: "run-123",
   scenarioId: "test-scenario",
-  scenarioVersion: 1,
+  scenarioVersion: "1.0.0",
   scenarioSchemaVersion: 1,
   scenarioContentHash: "hash",
   network: "testnet",
@@ -481,6 +481,58 @@ describe("Dashboard component catalogue loading and retry", () => {
     });
   });
 
+  it("shows a descriptive error with a working Retry when the scenario fetch returns a non-2xx status", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ error: { code: "DATABASE_UNAVAILABLE", message: "The persistent scenario catalogue is temporarily unavailable.", requestId: "req-1", details: [] } }),
+        { status: 503, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Couldn't load scenarios")).toBeDefined();
+    });
+    expect(
+      screen.getByText("The scenario service responded with HTTP 503: The persistent scenario catalogue is temporarily unavailable. (DATABASE_UNAVAILABLE)"),
+    ).toBeDefined();
+    expect(screen.getAllByRole("alert").some((element) => element.textContent?.includes("Couldn't load scenarios"))).toBe(true);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ items: mockScenarios }), { status: 200, headers: { "content-type": "application/json" } }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Couldn't load scenarios")).toBeNull();
+      expect(screen.getAllByText("XLM payment").length).toBeGreaterThan(0);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a descriptive error when the scenario fetch returns a non-2xx status without a JSON body", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response("Bad Gateway", { status: 502 }));
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("The scenario service responded with HTTP 502: The request failed. (UNKNOWN_ERROR)")).toBeDefined();
+    });
+    expect(screen.getByRole("button", { name: "Retry" })).toBeDefined();
+  });
+
+  it("shows a connectivity message when the scenario fetch throws a network error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Could not reach the scenario service. Check your connection or that the backend is running, then retry.")).toBeDefined();
+    });
+    expect(screen.getByRole("button", { name: "Retry" })).toBeDefined();
+  });
+
   it("displays distinct empty success state", async () => {
     vi.spyOn(api, "listScenarios").mockResolvedValue([]);
     
@@ -901,7 +953,7 @@ describe("Scenario definition preview, rate limiting, and ARIA announcements (#3
   it("opens scenario preview panel and fetches detail when Details button is clicked (#32)", async () => {
     const mockDetail: api.ScenarioDetail = {
       id: "xlm-payment",
-      version: 1,
+      version: "1.0.0",
       name: "XLM payment",
       description: "Detailed description of XLM payment.",
       contentHash: "hash-full-123456789",

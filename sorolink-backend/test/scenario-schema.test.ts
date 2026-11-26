@@ -20,7 +20,7 @@ describe("Scenario Schema v1", () => {
     const yaml = `
 schemaVersion: 1
 id: yaml-scenario
-version: 1
+version: "1.0.0"
 name: YAML scenario
 description: Parsed without executable content.
 network: testnet

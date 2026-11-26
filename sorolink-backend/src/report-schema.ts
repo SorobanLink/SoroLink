@@ -1,5 +1,6 @@
 import { Ajv } from "ajv";
 import type { RunReport } from "./domain.js";
+import { semverVersion } from "./scenario-schema.js";
 
 const jsonValue = {
   anyOf: [
@@ -23,7 +24,7 @@ export const runReportSchemaV1 = {
   properties: {
     id: { type: "string", minLength: 1 },
     scenarioId: { type: "string", minLength: 1, maxLength: 64 },
-    scenarioVersion: { type: "integer", minimum: 1, maximum: 2_147_483_647 },
+    scenarioVersion: semverVersion,
     scenarioSchemaVersion: { const: 1 },
     scenarioContentHash: { type: "string", minLength: 1 },
     network: { const: "testnet" },

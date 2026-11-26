@@ -1,4 +1,4 @@
-import { scenarioSchemaV1 } from "./scenario-schema.js";
+import { scenarioSchemaV1, semverVersion } from "./scenario-schema.js";
 import { runReportSchemaV1 } from "./report-schema.js";
 
 const runRequestSchema = {
@@ -8,7 +8,7 @@ const runRequestSchema = {
   properties: {
     scenarioId: { type: "string" },
     /**
-     * Optional exact version selector (issue #71).
+     * Optional exact semantic version selector (issues #71, #42), e.g. "1.0.0".
      *
      * - Published mode: resolves the exact requested version from the active
      *   catalogue source. Returns 404 if that version does not exist.
@@ -20,7 +20,7 @@ const runRequestSchema = {
      * - Omitting scenarioVersion always executes the latest definition from
      *   the active catalogue source.
      */
-    scenarioVersion: { type: "integer", minimum: 1 },
+    scenarioVersion: semverVersion,
     inputs: { type: "object", additionalProperties: false },
   },
 } as const;
@@ -80,7 +80,7 @@ export function openApiDocument() {
           },
         },
       },
-      "/api/v1/scenarios/validate": { post: { operationId: "validateScenario", requestBody: definitionBody(), responses: { "200": { description: "Validated scenario and content hash", content: { "application/json": { schema: { type: "object", required: ["valid", "scenarioId", "scenarioVersion", "schemaVersion", "contentHash"], properties: { valid: { const: true }, scenarioId: { type: "string" }, scenarioVersion: { type: "integer" }, schemaVersion: { const: 1 }, contentHash: { type: "string" } } } } } }, "400": { description: "Invalid scenario", ...apiErrorContent }, "415": { description: "UNSUPPORTED_MEDIA_TYPE — Content-Type is not application/json, application/yaml, application/x-yaml, or text/yaml (issue #77)", ...apiErrorContent } } } },
+      "/api/v1/scenarios/validate": { post: { operationId: "validateScenario", requestBody: definitionBody(), responses: { "200": { description: "Validated scenario and content hash", content: { "application/json": { schema: { type: "object", required: ["valid", "scenarioId", "scenarioVersion", "schemaVersion", "contentHash"], properties: { valid: { const: true }, scenarioId: { type: "string" }, scenarioVersion: semverVersion, schemaVersion: { const: 1 }, contentHash: { type: "string" } } } } } }, "400": { description: "Invalid scenario", ...apiErrorContent }, "415": { description: "UNSUPPORTED_MEDIA_TYPE — Content-Type is not application/json, application/yaml, application/x-yaml, or text/yaml (issue #77)", ...apiErrorContent } } } },
       "/api/v1/scenarios/{scenarioId}/versions": { get: { operationId: "listScenarioVersions", description: "Rejects unknown query parameters, duplicate query keys, and non-integer-text limit/cursor values (decimals, scientific notation, empty strings) with 400 INVALID_REQUEST (issue #78).", parameters: [scenarioIdParameter, { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 20 } }, { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } }], responses: { "200": { description: "Bounded immutable version history", content: { "application/json": { schema: { type: "object", required: ["items"], properties: { items: { type: "array", items: { $ref: "#/components/schemas/ScenarioSummary" } }, nextCursor: { type: "integer" } } } } } }, "400": { description: "INVALID_REQUEST — malformed scenarioId, limit, or cursor, or unknown query parameter", ...apiErrorContent }, "503": { description: "Persistence not enabled or unavailable", ...apiErrorContent } } } },
       "/api/v1/scenarios/{scenarioId}/versions/{version}": { get: { operationId: "getScenarioVersion", description: "Rejects a non-integer-text version path segment with 400 INVALID_REQUEST (issue #78).", parameters: [scenarioIdParameter, versionParameter], responses: { "200": { description: "Exact immutable scenario version", content: { "application/json": { schema: { $ref: "#/components/schemas/ScenarioV1" } } } }, "400": { description: "INVALID_REQUEST — malformed scenarioId or version", ...apiErrorContent }, "404": { description: "Not found", ...apiErrorContent } } } },
       "/api/v1/scenarios/{scenarioId}/versions/{version}/export": { get: { operationId: "exportScenarioVersion", description: "Rejects unknown query parameters, a non-integer-text version, or an unrecognised format with 400 INVALID_REQUEST (issue #78).", parameters: [scenarioIdParameter, versionParameter, { name: "format", in: "query", schema: { type: "string", enum: ["json", "yaml"], default: "json" } }], responses: { "200": { description: "Canonical version export", content: { "application/json": { schema: { $ref: "#/components/schemas/ScenarioV1" } }, "application/yaml": { schema: { type: "string" } } } }, "400": { description: "INVALID_REQUEST — malformed scenarioId, version, or format, or unknown query parameter", ...apiErrorContent }, "404": { description: "Not found", ...apiErrorContent } } } },
@@ -106,6 +106,22 @@ export function openApiDocument() {
             "409": { description: "SCENARIO_VERSION_MISMATCH — bundled version differs from requested, or IDEMPOTENCY_CONFLICT — same key, different body", ...apiErrorContent },
             "429": { description: "RATE_LIMITED — per-IP run creation quota exceeded", ...apiErrorContent, headers: rateLimitedHeaders },
             "503": { description: "IDEMPOTENCY_CAPACITY or RUNNER_AT_CAPACITY", ...apiErrorContent },
+          },
+        },
+        get: {
+          operationId: "listRuns",
+          summary: "List retained runs",
+          description: "Issue #41: offset-paginated list of retained runs, newest first. `nextOffset` is present only when more runs exist. Out-of-range or non-integer `limit`/`offset` values, and unknown query parameters, return 400 INVALID_REQUEST.",
+          parameters: [
+            { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 20 } },
+            { name: "offset", in: "query", schema: { type: "integer", minimum: 0, default: 0 } },
+          ],
+          responses: {
+            "200": {
+              description: "Page of run reports",
+              content: { "application/json": { schema: { type: "object", required: ["items", "limit", "offset"], properties: { items: { type: "array", items: { $ref: "#/components/schemas/RunReport" } }, limit: { type: "integer" }, offset: { type: "integer" }, nextOffset: { type: "integer" } } } } },
+            },
+            "400": { description: "INVALID_REQUEST — limit outside 1–100, negative or non-integer offset, or unknown query parameter", ...apiErrorContent },
           },
         },
       },
@@ -201,7 +217,7 @@ export function openApiDocument() {
           required: ["id", "version", "name", "description", "contentHash"],
           properties: {
             id: { type: "string" },
-            version: { type: "integer" },
+            version: semverVersion,
             name: { type: "string" },
             description: { type: "string" },
             contentHash: { type: "string" },

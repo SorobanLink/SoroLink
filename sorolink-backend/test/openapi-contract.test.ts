@@ -31,7 +31,7 @@ describe("OpenAPI Contract Validation", () => {
       if (data.items.length > 0) {
         expect(data.items[0]).toHaveProperty("id");
         expect(data.items[0]).toHaveProperty("version");
-        expect(typeof data.items[0].version).toBe("number");
+        expect(typeof data.items[0].version).toBe("string");
       }
     });
   });
@@ -41,7 +41,7 @@ describe("OpenAPI Contract Validation", () => {
       const scenario = {
         schemaVersion: 1,
         id: "test",
-        version: 1,
+        version: "1.0.0",
         name: "Test",
         description: "Test scenario",
         network: "testnet",
@@ -166,7 +166,7 @@ describe("OpenAPI Contract Validation", () => {
       const scenario = {
         schemaVersion: 1,
         id: "duplicate-test",
-        version: 1,
+        version: "1.0.0",
         name: "Test",
         description: "Test",
         network: "testnet",
@@ -195,7 +195,7 @@ describe("OpenAPI Contract Validation", () => {
       const scenario = {
         schemaVersion: 1,
         id: "decimal-test",
-        version: 1,
+        version: "1.0.0",
         name: "Decimal Test",
         description: "Test",
         network: "testnet",

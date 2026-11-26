@@ -25,7 +25,7 @@ describe("JUnit XML export (#60)", () => {
           scenarioId: "test-passing",
           execution: {
             scenarioId: "test-passing",
-            scenarioVersion: 1,
+            scenarioVersion: "1.0.0",
             steps: [
               {
                 id: "pay",
@@ -66,7 +66,7 @@ describe("JUnit XML export (#60)", () => {
           scenarioId: "insufficient-xlm-balance",
           execution: {
             scenarioId: "insufficient-xlm-balance",
-            scenarioVersion: 1,
+            scenarioVersion: "1.0.0",
             steps: [
               {
                 id: "overdraw",
@@ -102,7 +102,7 @@ describe("JUnit XML export (#60)", () => {
           scenarioId: "failing-scenario",
           execution: {
             scenarioId: "failing-scenario",
-            scenarioVersion: 1,
+            scenarioVersion: "1.0.0",
             steps: [
               {
                 id: "pay",
@@ -156,7 +156,7 @@ describe("JUnit XML export (#60)", () => {
           scenarioId: "suite-scenario-1",
           execution: {
             scenarioId: "suite-scenario-1",
-            scenarioVersion: 1,
+            scenarioVersion: "1.0.0",
             steps: [{ id: "s1", type: "payment", status: "passed", message: "ok" }],
             assertions: [],
           },
@@ -186,7 +186,7 @@ describe("JUnit XML export (#60)", () => {
         JSON.stringify({
           schemaVersion: 1,
           id: "failing-cli-test",
-          version: 1,
+          version: "1.0.0",
           name: "Failing CLI Test",
           description: "Invalid network scenario",
           network: "mainnet",

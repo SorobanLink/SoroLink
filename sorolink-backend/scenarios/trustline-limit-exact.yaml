@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: trustline-limit-exact
-version: 1
+version: "1.0.0"
 name: Payment exactly fills a trustline
 description: Verify that an issued-asset payment equal to an explicit fractional trustline limit succeeds and leaves the exact balance.
 network: testnet

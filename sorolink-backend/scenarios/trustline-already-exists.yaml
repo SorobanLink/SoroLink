@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: trustline-already-exists
-version: 1
+version: "1.0.0"
 name: Trustline already exists
 description: Create a trustline, then verify payments work when the trustline is already established.
 network: testnet
