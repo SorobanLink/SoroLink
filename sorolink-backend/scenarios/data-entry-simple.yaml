@@ -1,0 +1,26 @@
+schemaVersion: 1
+id: data-entry-simple
+version: 1
+name: ManageData key-value entry
+description: Sets a key-value pair on an account using the manageData operation and verifies the data entry exists.
+network: testnet
+accounts:
+  - id: account
+    generate: true
+    fund: true
+assets:
+  - id: xlm
+    type: native
+steps:
+  - id: set-data
+    type: manageData
+    account: account
+    key: hello
+    value: world
+assertions:
+  - type: stepSucceeded
+    step: set-data
+  - type: dataEntryExists
+    account: account
+    key: hello
+    value: world
