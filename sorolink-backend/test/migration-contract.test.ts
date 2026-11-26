@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("P2 persistence SQL contract", () => {
