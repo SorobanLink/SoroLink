@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFile as readFilePromises } from "node:fs/promises";
+import { readFile as readFilePromises, writeFile, access } from "node:fs/promises";
 import { readdirSync, statSync } from "node:fs";
 
 import { extname, resolve } from "node:path";
@@ -68,6 +68,7 @@ interface CliOptions {
   sort?: string;
   stdin?: boolean;
   format?: "json" | "yaml";
+  force?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -163,6 +164,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: typeof values.sort === "string" ? values.sort : undefined,
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
+      force: Boolean(values.force),
     },
     failFast: Boolean(values["fail-fast"]),
   };
@@ -948,6 +950,59 @@ complete -F _sorolink_complete ./sorolink 2>/dev/null || true
 `;
 }
 
+const INIT_TEMPLATE = `schemaVersion: 1
+# Unique identifier for this scenario (kebab-case, no spaces).
+id: my-scenario
+version: 1
+# Human-readable name shown in sorolink list.
+name: My scenario
+description: A short description of what this scenario tests.
+# Target network: testnet or futurenet.
+network: testnet
+accounts:
+  # generate:true creates a fresh keypair; fund:true tops it up via Friendbot.
+  - id: sender
+    generate: true
+    fund: true
+  - id: recipient
+    generate: true
+    fund: true
+assets:
+  # type: native is XLM; for issued assets use type: issued and add issuer/code.
+  - id: xlm
+    type: native
+steps:
+  - id: payment
+    type: payment
+    from: sender
+    to: recipient
+    asset: xlm
+    amount: "5"
+assertions:
+  - type: stepSucceeded
+    step: payment
+  - type: balanceChangedBy
+    account: recipient
+    asset: xlm
+    amount: "5"
+`;
+
+async function initCommand(filename: string, force: boolean): Promise<number> {
+  const target = resolve(filename);
+  if (!force) {
+    try {
+      await access(target);
+      console.error(`Error: ${filename} already exists. Use --force to overwrite.`);
+      return 1;
+    } catch {
+      // file does not exist — proceed
+    }
+  }
+  await writeFile(target, INIT_TEMPLATE, "utf-8");
+  console.log(`Created ${filename}`);
+  return 0;
+}
+
 async function completionsCommand(shell: string): Promise<number> {
   const normalized = shell.toLowerCase();
   if (normalized !== "bash" && normalized !== "zsh") {
@@ -1042,6 +1097,8 @@ export async function main(): Promise<number> {
         return 1;
       }
       return runSuiteCommand(args, options, failFast);
+    case "init":
+      return initCommand(args[0] ?? "my-scenario.yaml", options.force ?? false);
     case "completions":
       if (args.length === 0) {
         console.error('Error: Missing shell argument');
