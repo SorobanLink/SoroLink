@@ -957,10 +957,13 @@ async function runSuiteCommand(
 
 const COMPLETION_COMMANDS = [
   "list",
+  "show",
   "validate",
+  "validate-directory",
   "init",
   "run",
   "run-suite",
+  "diff",
   "completions",
   "doctor",
 ];
@@ -976,11 +979,24 @@ const COMPLETION_OPTIONS = [
   "--fail-fast",
 ];
 
-function generateCompletions(shell: "bash" | "zsh"): string {
+function generateCompletions(shell: "bash" | "zsh" | "fish"): string {
   const quotedCommands = COMPLETION_COMMANDS.map((c) => `"${c}"`).join(" ");
   const quotedOptions = COMPLETION_OPTIONS.map((o) => `"${o}"`).join(" ");
   const cmdList = COMPLETION_COMMANDS.join(" ");
   const optList = COMPLETION_OPTIONS.join(" ");
+
+  if (shell === "fish") {
+    const cmds = COMPLETION_COMMANDS.map((c) => `complete -c sorolink -f -n '__fish_use_subcommand' -a '${c}'`).join("\n");
+    const opts = COMPLETION_OPTIONS.map((o) => `complete -c sorolink -n 'not __fish_use_subcommand' -l '${o.replace(/^--/, "")}'`).join("\n");
+    return `# SoroLink CLI shell completion for fish.
+# Save to ~/.config/fish/completions/sorolink.fish
+
+${cmds}
+${opts}
+# File completions for run/validate subcommands
+complete -c sorolink -n '__fish_seen_subcommand_from run validate' -F
+`;
+  }
 
   if (shell === "zsh") {
     return `#compdef sorolink
@@ -1037,12 +1053,12 @@ complete -F _sorolink_complete ./sorolink 2>/dev/null || true
 
 async function completionsCommand(shell: string): Promise<number> {
   const normalized = shell.toLowerCase();
-  if (normalized !== "bash" && normalized !== "zsh") {
-    console.error(`Error: Unsupported shell "${shell}". Use "bash" or "zsh".`);
-    console.error('Usage: sorolink completions <bash|zsh>');
+  if (normalized !== "bash" && normalized !== "zsh" && normalized !== "fish") {
+    console.error(`Error: Unsupported shell "${shell}". Use "bash", "zsh", or "fish".`);
+    console.error('Usage: sorolink completions <bash|zsh|fish>');
     return 1;
   }
-  console.log(generateCompletions(normalized));
+  console.log(generateCompletions(normalized as "bash" | "zsh" | "fish"));
   return 0;
 }
 
@@ -1138,7 +1154,7 @@ export async function main(): Promise<number> {
     case "completions":
       if (args.length === 0) {
         console.error('Error: Missing shell argument');
-        console.error('Usage: sorolink completions <bash|zsh>');
+        console.error('Usage: sorolink completions <bash|zsh|fish>');
         return 1;
       }
       return completionsCommand(args[0]);
