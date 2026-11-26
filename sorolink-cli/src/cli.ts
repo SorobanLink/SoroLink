@@ -116,6 +116,7 @@ Options:
   --sort <field>      Sort results: id
   --stdin             Read the scenario definition from standard input
   --format <format>   Input format for standard input: json or yaml (required with --stdin)
+  --retries <n>       Retry run up to N times on transient failure (default: 0)
   --help              Show this help message
   --version           Show version information
 
