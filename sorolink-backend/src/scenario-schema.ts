@@ -50,6 +50,7 @@ export const scenarioSchemaV1 = {
         { type: "object", additionalProperties: false, required: ["id", "type", "account", "sellingAsset", "buyingAsset", "amount", "price"], properties: { id, type: { const: "manageSellOffer" }, account: id, sellingAsset: id, buyingAsset: id, amount: positiveAmount, price: positiveAmount } },
         { type: "object", additionalProperties: false, required: ["id", "type", "from", "to", "sendAsset", "sendMax", "destAsset", "destAmount", "path"], properties: { id, type: { const: "pathPaymentStrictReceive" }, from: id, to: id, sendAsset: id, sendMax: positiveAmount, destAsset: id, destAmount: positiveAmount, path: { type: "array", maxItems: 5, items: id } } },
         { type: "object", additionalProperties: false, required: ["id", "type", "from", "to", "sendAsset", "sendAmount", "destAsset", "destMin", "path"], properties: { id, type: { const: "pathPaymentStrictSend" }, from: id, to: id, sendAsset: id, sendAmount: positiveAmount, destAsset: id, destMin: positiveAmount, path: { type: "array", maxItems: 5, items: id } } },
+        { type: "object", additionalProperties: false, required: ["id", "type", "account"], properties: { id, type: { const: "createAccount" }, account: id } },
       ] },
     },
     assertions: {
