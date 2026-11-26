@@ -48,4 +48,8 @@ body:
       label: Contribution
       options:
         - label: I am willing to implement this after maintainer approval and assignment.
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting, please review the [Contributing Guide](CONTRIBUTING.md) for PR checklist, review criteria, and workflow expectations.
 
