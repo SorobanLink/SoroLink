@@ -472,3 +472,7 @@ try {
 For issues or questions:
 - GitHub Issues: https://github.com/SoroLinkorg/SoroLink/issues
 - Documentation: https://github.com/SoroLinkorg/SoroLink/tree/main/sorolink-docs
+
+## Workflow Examples
+
+See the CLI README's [Common Workflows](../sorolink-cli/README.md#common-workflows) section for copy-paste bash examples: loop all scenarios, parse JSON with `jq`, fail CI on assertion failure, save timestamped results, and validate a custom scenario pre-commit.
