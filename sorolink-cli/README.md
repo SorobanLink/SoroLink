@@ -400,3 +400,5 @@ npm run typecheck
 # Build
 npm run build
 ```
+
+See also [`sorolink-docs/CI_INTEGRATION.md`](../sorolink-docs/CI_INTEGRATION.md) for a full CI integration guide with more workflow recipes.
