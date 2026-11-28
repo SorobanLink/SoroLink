@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: issued-asset-holder-transfer
-version: 1
+version: "1.0.0"
 name: Issued asset holder-to-holder transfer
 description: Issue TESTUSD to a sender, then transfer part of it to a second holder.
 network: testnet

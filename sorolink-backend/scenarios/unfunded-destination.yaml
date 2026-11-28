@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: unfunded-destination
-version: 1
+version: "1.0.0"
 name: Payment to an unfunded destination
 description: Verify that generating a keypair does not create a ledger account and a native payment fails with op_no_destination.
 network: testnet

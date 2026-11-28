@@ -1,6 +1,6 @@
 export interface ScenarioSummary {
   id: string;
-  version: number;
+  version: string;
   name: string;
   description: string;
   contentHash: string;
@@ -38,7 +38,7 @@ export interface AssertionResult {
 export interface RunReport {
   id: string;
   scenarioId: string;
-  scenarioVersion: number;
+  scenarioVersion: string;
   scenarioSchemaVersion: 1;
   scenarioContentHash: string;
   network: "testnet";
@@ -152,11 +152,15 @@ function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
+/** Issue #42: scenario versions are semantic version strings (MAJOR.MINOR.PATCH). */
+function isSemanticVersion(value: unknown): value is string {
+  return typeof value === "string" && /^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$/.test(value);
+}
+
 function isScenarioSummary(value: unknown): value is ScenarioSummary {
   return isRecord(value)
     && isString(value.id)
-    && isNonNegativeInteger(value.version)
-    && value.version > 0
+    && isSemanticVersion(value.version)
     && isString(value.name)
     && isString(value.description)
     && isString(value.contentHash);
@@ -206,8 +210,7 @@ export function isRunReport(value: unknown): value is RunReport {
   if (!isRecord(value)
     || !isString(value.id)
     || !isString(value.scenarioId)
-    || !isNonNegativeInteger(value.scenarioVersion)
-    || value.scenarioVersion < 1
+    || !isSemanticVersion(value.scenarioVersion)
     || value.scenarioSchemaVersion !== 1
     || !isString(value.scenarioContentHash)
     || value.network !== "testnet"
@@ -487,7 +490,7 @@ export function compareReports(a: RunReport, b: RunReport): ReportComparison {
 
 export interface ScenarioDetail {
   id: string;
-  version: number;
+  version: string;
   name: string;
   description: string;
   contentHash: string;
@@ -502,8 +505,7 @@ export interface ScenarioDetail {
 function isScenarioDetail(value: unknown): value is ScenarioDetail {
   return isRecord(value)
     && isString(value.id)
-    && isNonNegativeInteger(value.version)
-    && value.version > 0
+    && isSemanticVersion(value.version)
     && isString(value.name)
     && isString(value.description)
     && isString(value.contentHash)

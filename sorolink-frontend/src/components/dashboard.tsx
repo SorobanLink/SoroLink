@@ -3,9 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ApiError, RateLimitError, downloadReport, getRun, getScenario, listScenarios, startRun, type JsonValue, type RunReport, type ScenarioDetail, type ScenarioSummary } from "@/lib/api";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const terminalStatuses = new Set(["passed", "failed", "cancelled"]);
 const DEFAULT_TAB_TITLE = "SoroLink – Stellar Testing Dashboard";
+const TOAST_DURATION_MS = 5000;
+
+/** #9 — Ctrl+Enter (or ⌘+Enter on macOS) starts a run for the selected scenario. */
+export function isRunShortcut(event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "repeat">): boolean {
+  return event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && !event.repeat;
+}
+
+/** #6 — Default number of completed runs kept in the session "Recent runs" panel. */
+export const DEFAULT_RECENT_RUNS_LIMIT = 10;
 
 export function getPollingDelay(pollAttempt: number, consecutiveFailures: number): number {
   if (consecutiveFailures > 0) {
@@ -144,8 +154,10 @@ function parseCategory(value: string | null): ScenarioFilter {
   return "all";
 }
 
-export function Dashboard() {
+export function Dashboard({ recentRunsLimit = DEFAULT_RECENT_RUNS_LIMIT }: { recentRunsLimit?: number } = {}) {
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
+  // #6 — Session-scoped recent runs (in memory only; cleared on reload)
+  const [recentRuns, setRecentRuns] = useState<RunReport[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [run, setRun] = useState<RunReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -197,6 +209,14 @@ export function Dashboard() {
   // #42 — ARIA live region: tracks last announcement to deduplicate
   const [liveAnnouncement, setLiveAnnouncement] = useState<string>("");
   const lastAnnouncedRef = useRef<string>("");
+
+  // #11 — Single toast shown when a run finishes (passed or failed)
+  const [toast, setToast] = useState<{ id: string; scenarioId: string; status: "passed" | "failed" } | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), TOAST_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Search state — preserved while a run is in progress (#29)
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -376,27 +396,65 @@ export function Dashboard() {
 
   // #42 — Announce meaningful run lifecycle transitions to assistive technology
   const prevRunStatusRef = useRef<string | null>(null);
+  // #10 — Track the run and how many steps were already announced so each
+  // "Step N complete" message is spoken once per run.
+  const announcedRunIdRef = useRef<string | null>(null);
+  const announcedStepCountRef = useRef(0);
   useEffect(() => {
     const currentStatus = run?.status ?? null;
     const prev = prevRunStatusRef.current;
     prevRunStatusRef.current = currentStatus;
-    if (!currentStatus || currentStatus === prev) return;
-    const scenarioName = run ? (scenarios.find((s) => s.id === run.scenarioId)?.name ?? run.scenarioId) : "";
-    let message = "";
-    if (prev === null && currentStatus && !terminalStatuses.has(currentStatus)) {
-      message = `Run started for scenario ${scenarioName}.`;
-    } else if (currentStatus === "passed") {
-      message = `Run passed for scenario ${scenarioName}.`;
-    } else if (currentStatus === "failed") {
-      const failSummary = run?.summary
+    if (!run || !currentStatus) return;
+
+    if (announcedRunIdRef.current !== run.id) {
+      announcedRunIdRef.current = run.id;
+      // A run first seen already finished (restored/imported) only gets its
+      // final result announced, not a replay of every step.
+      announcedStepCountRef.current = terminalStatuses.has(currentStatus) ? run.steps.length : 0;
+      lastAnnouncedRef.current = "";
+    }
+
+    const scenarioName = scenarios.find((s) => s.id === run.scenarioId)?.name ?? run.scenarioId;
+    const parts: string[] = [];
+    const statusChanged = currentStatus !== prev;
+
+    if (statusChanged && prev === null && !terminalStatuses.has(currentStatus)) {
+      parts.push(`Run started for scenario ${scenarioName}.`);
+    }
+
+    // Every entry in run.steps is a completed step; announce only new ones.
+    const completedSteps = run.steps.length;
+    if (completedSteps > announcedStepCountRef.current) {
+      for (let n = announcedStepCountRef.current + 1; n <= completedSteps; n++) {
+        parts.push(`Step ${n} complete.`);
+      }
+      announcedStepCountRef.current = completedSteps;
+    }
+
+    if (statusChanged && currentStatus === "passed") {
+      parts.push(`Run passed for scenario ${scenarioName}.`);
+    } else if (statusChanged && currentStatus === "failed") {
+      const failSummary = run.summary
         ? `${run.summary.stepsFailed} step${run.summary.stepsFailed !== 1 ? "s" : ""} and ${run.summary.assertionsFailed} assertion${run.summary.assertionsFailed !== 1 ? "s" : ""} failed.`
         : "Check the report for details.";
-      message = `Run failed for scenario ${scenarioName}. ${failSummary}`;
+      parts.push(`Run failed for scenario ${scenarioName}. ${failSummary}`);
     }
+
+    const message = parts.join(" ");
     if (message && message !== lastAnnouncedRef.current) {
       lastAnnouncedRef.current = message;
       setLiveAnnouncement(message);
     }
+
+    // #11 — In-page toast when a live run reaches a terminal state
+    if (
+      statusChanged &&
+      prev !== null &&
+      (currentStatus === "passed" || currentStatus === "failed")
+    ) {
+      setToast({ id: run.id, scenarioId: run.scenarioId, status: currentStatus });
+    }
+    if (!statusChanged) return;
     if (
       notificationsEnabled &&
       run &&
@@ -436,6 +494,26 @@ export function Dashboard() {
     }
   };
 
+  // #6 — Record completed runs in the session history (most recent first)
+  useEffect(() => {
+    if (!run || isOffline || !terminalStatuses.has(run.status)) return;
+    setRecentRuns((prev) => {
+      // Re-opening an entry from the list must not reorder it.
+      if (prev.some((entry) => entry.id === run.id)) {
+        return prev.map((entry) => (entry.id === run.id ? run : entry));
+      }
+      return [run, ...prev].slice(0, Math.max(0, recentRunsLimit));
+    });
+  }, [run, isOffline, recentRunsLimit]);
+
+  function handleSelectRecentRun(entry: RunReport) {
+    setIsOffline(false);
+    setImportError(null);
+    setViewMode("report");
+    setRun(entry);
+    setSelectedId(entry.scenarioId);
+  }
+
   // #25 — Update browser tab title to reflect active run status
   useEffect(() => {
     if (!run) {
@@ -466,7 +544,7 @@ export function Dashboard() {
       .catch((reason: unknown) => {
         if (!active) return;
         if (reason instanceof DOMException && reason.name === "AbortError") return;
-        setCatalogueError(readError(reason));
+        setCatalogueError(describeCatalogueError(reason));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -656,6 +734,22 @@ export function Dashboard() {
   }
 
   const isRunning = !!run && !terminalStatuses.has(run.status);
+  const canRun = !!selected && !starting && !isRunning && rateLimitCountdown === null;
+
+  // #9 — Keyboard shortcut to start a run; disabled while a run is in progress
+  const runShortcutRef = useRef<() => void>(() => {});
+  runShortcutRef.current = () => {
+    if (canRun) void handleRun();
+  };
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!isRunShortcut(event)) return;
+      event.preventDefault();
+      runShortcutRef.current();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <main>
@@ -683,12 +777,37 @@ export function Dashboard() {
       >
         {liveAnnouncement}
       </div>
+      {/* #11 — Run completion toast (auto-dismisses after 5s) */}
+      {toast && (
+        <div
+          key={toast.id}
+          className={`toast toast--${toast.status}`}
+          role="alert"
+          data-testid="run-toast"
+        >
+          <span className="toast-message">
+            <strong>{toast.status === "passed" ? "Run passed" : "Run failed"}</strong>
+            <span>Scenario <code>{toast.scenarioId}</code> {toast.status}.</span>
+          </span>
+          <button
+            type="button"
+            className="toast-dismiss"
+            aria-label="Dismiss notification"
+            onClick={() => setToast(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <header className="topbar shell">
         <a className="brand" href="#top" aria-label="SoroLink home">
           <img className="brand-mark" src="/sorolink-mark.svg" width="38" height="38" alt="" aria-hidden="true" />
           <span>sorolink</span>
         </a>
-        <a className="docs-link" href="https://developers.stellar.org" target="_blank" rel="noreferrer">Docs <ArrowIcon /></a>
+        <div className="topbar-actions">
+          <ThemeToggle />
+          <a className="docs-link" href="https://developers.stellar.org" target="_blank" rel="noreferrer">Docs <ArrowIcon /></a>
+        </div>
       </header>
 
       <section className="hero shell" id="top">
@@ -959,15 +1078,22 @@ export function Dashboard() {
 
         <div className="launch-panel">
           <div><span className="label">SELECTED SCENARIO</span><strong>{selected?.name ?? "Choose a scenario"}</strong><span>{selected?.id ?? "—"}</span></div>
-          <button
-            className="run-button"
-            type="button"
-            disabled={!selected || starting || isRunning || rateLimitCountdown !== null}
-            onClick={handleRun}
-            aria-describedby={rateLimitCountdown !== null ? "rate-limit-countdown" : undefined}
-          >
-            {starting ? "Starting…" : isRunning ? "Running…" : rateLimitCountdown !== null ? `Retry in ${rateLimitCountdown}s` : "Run on Testnet"}<PlayIcon />
-          </button>
+          <div className="run-action">
+            <button
+              className="run-button"
+              type="button"
+              disabled={!canRun}
+              onClick={handleRun}
+              aria-keyshortcuts="Control+Enter Meta+Enter"
+              aria-describedby={rateLimitCountdown !== null ? "run-shortcut-hint rate-limit-countdown" : "run-shortcut-hint"}
+              title="Run selected scenario (Ctrl+Enter / ⌘+Enter)"
+            >
+              {starting ? "Starting…" : isRunning ? "Running…" : rateLimitCountdown !== null ? `Retry in ${rateLimitCountdown}s` : "Run on Testnet"}<PlayIcon />
+            </button>
+            <p id="run-shortcut-hint" className="shortcut-hint">
+              Shortcut: <kbd>Ctrl</kbd> + <kbd>Enter</kbd> <span aria-hidden="true">(</span><span className="sr-only">or </span><kbd>⌘</kbd> + <kbd>Enter</kbd> on macOS<span aria-hidden="true">)</span>
+            </p>
+          </div>
           {rateLimitCountdown !== null && (
             <p id="rate-limit-countdown" className="rate-limit-note" role="status" aria-live="polite">
               Rate limited — you can try again in <strong>{rateLimitCountdown}s</strong>.
@@ -1084,6 +1210,13 @@ export function Dashboard() {
           </div>
         )}
 
+        <RecentRunsPanel
+          runs={recentRuns}
+          activeRunId={run?.id ?? null}
+          scenarios={scenarios}
+          onSelect={handleSelectRecentRun}
+        />
+
         {viewMode === "compare" ? (
           <ReportComparisonView currentRun={run} />
         ) : !run ? (
@@ -1116,6 +1249,52 @@ export function Dashboard() {
 
       <footer className="shell"><span>ESURE / TEST WITH CONFIDENCE</span><span>BUILT FOR STELLAR</span></footer>
     </main>
+  );
+}
+
+// #6 — Session "Recent runs" panel. Each entry is a native button, so the
+// list is reachable with Tab and activated with Enter/Space.
+function RecentRunsPanel({
+  runs,
+  activeRunId,
+  scenarios,
+  onSelect,
+}: {
+  runs: RunReport[];
+  activeRunId: string | null;
+  scenarios: ScenarioSummary[];
+  onSelect: (run: RunReport) => void;
+}) {
+  return (
+    <section className="recent-runs" aria-labelledby="recent-runs-heading">
+      <h3 id="recent-runs-heading" className="label">Recent runs</h3>
+      {runs.length === 0 ? (
+        <p className="recent-runs__empty">No completed runs yet in this session. Finished runs will appear here.</p>
+      ) : (
+        <ul className="recent-runs__list">
+          {runs.map((entry) => {
+            const completedIso = entry.completedAt ?? entry.createdAt;
+            const scenarioName = scenarios.find((s) => s.id === entry.scenarioId)?.name ?? entry.scenarioId;
+            const isActive = entry.id === activeRunId;
+            return (
+              <li key={entry.id}>
+                <button
+                  type="button"
+                  className={`recent-run ${isActive ? "active" : ""}`}
+                  aria-current={isActive ? "true" : undefined}
+                  aria-label={`Load run ${entry.id}: ${scenarioName}, ${entry.status}, completed ${formatLocaleDateTime(completedIso)}`}
+                  onClick={() => onSelect(entry)}
+                >
+                  <code className="recent-run__scenario">{entry.scenarioId}</code>
+                  <StatusBadge status={entry.status} />
+                  <time className="recent-run__time" dateTime={completedIso}>{formatLocaleDateTime(completedIso)}</time>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -1727,6 +1906,17 @@ function ChevronIcon({ rotated }: { rotated?: boolean } = {}) {
       <path d="M4 6l4 4 4-4" />
     </svg>
   );
+}
+
+/** #19 — Actionable message for a failed scenario catalogue fetch (non-2xx or thrown). */
+export function describeCatalogueError(reason: unknown): string {
+  if (reason instanceof ApiError) {
+    return `The scenario service responded with HTTP ${reason.status}: ${reason.message} (${reason.code})`;
+  }
+  if (reason instanceof TypeError) {
+    return "Could not reach the scenario service. Check your connection or that the backend is running, then retry.";
+  }
+  return readError(reason);
 }
 
 function readError(reason: unknown): string {

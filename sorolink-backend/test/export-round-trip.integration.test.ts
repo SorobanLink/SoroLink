@@ -20,7 +20,7 @@ describe("Export Round-Trip Tests (Issue #116)", () => {
     const scenario: ValidatedScenario = {
       schemaVersion: 1,
       id: "test-json-round-trip",
-      version: 1,
+      version: "1.0.0",
       name: "JSON Round Trip Test",
       description: "Verify JSON export validates back to same content hash",
       network: "testnet",
@@ -44,7 +44,7 @@ describe("Export Round-Trip Tests (Issue #116)", () => {
     const scenario: ValidatedScenario = {
       schemaVersion: 1,
       id: "test-yaml-round-trip",
-      version: 1,
+      version: "1.0.0",
       name: "YAML Round Trip Test",
       description: "Verify YAML export validates back to same content hash",
       network: "testnet",
@@ -161,7 +161,7 @@ describe("Export Round-Trip Tests (Issue #116)", () => {
     const scenario: ValidatedScenario = {
       schemaVersion: 1,
       id: "test-format-consistency",
-      version: 1,
+      version: "1.0.0",
       name: "Format Consistency Test",
       description: "Verify JSON and YAML export the same data",
       network: "testnet",

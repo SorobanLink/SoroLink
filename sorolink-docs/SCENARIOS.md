@@ -6,7 +6,7 @@ no executable code or credentials and are validated before Testnet access.
 
 ## Bundled Scenarios
 
-ESURE includes 12 bundled scenarios for Testnet integration testing:
+ESURE includes 18 bundled scenarios for Testnet integration testing:
 
 | Scenario ID | Purpose | Expected Result |
 | --- | --- | --- |
@@ -28,6 +28,7 @@ ESURE includes 12 bundled scenarios for Testnet integration testing:
 | `minimum-xlm-payment` | Send minimum viable XLM (1 stroop) | Pass |
 | `minimum-issued-asset-payment` | Transfer the smallest issued-asset unit between holders | Pass; sender and recipient balances are exact |
 | `path-payment` | Create EUR/XLM and USDC/EUR offers and send XLM through EUR to deliver USDC | Pass on Testnet |
+| `recovery-after-expected-failure` | Attempt payment without trustline (fails), establish trustline, retry (succeeds) | Controlled `op_no_trust` failure then Pass |
 
 These scenarios demonstrate XLM transfers, issued assets, trustline management,
 expected failure handling, and multi-step transaction flows that Stellar developers
@@ -47,6 +48,15 @@ different operation: it first issues 10 units to a holder, then attempts to
 lower that trustline's limit to 5. Stellar rejects the `changeTrust` operation
 with `op_invalid_limit`, and the holder's issued-asset balance remains exactly
 10.
+
+`recovery-after-expected-failure` demonstrates the continuation semantics of
+`stepFailedWith`. The scenario deliberately sends a USD payment to a recipient
+that has no USD trustline. The `stepFailedWith` assertion matches the exact
+`tx_failed / op_no_trust` error code pair and allows execution to continue. The
+recipient then establishes a trustline in the next step, and the retry payment
+succeeds. The final recipient USD balance is 100. This pattern verifies that
+SoroLink's runner treats a matched expected failure as a passing assertion and
+does not short-circuit the remaining steps.
 
 `path-payment` provisions its own Testnet liquidity. It creates generated sender,
 market-maker, recipient, and issuer accounts, then submits trustlines, issues
@@ -376,3 +386,7 @@ schema, and generated API types import the updated domain types directly.
 
 The OpenAPI 3.1 contract and embedded Scenario v1 JSON Schema are available at
 `GET /openapi.json`.
+
+## See also
+
+- [Issued asset payment lifecycle](./LIFECYCLE_ISSUED_ASSET_PAYMENT.md) — step-by-step walkthrough of the issuer → trustline → payment → assertion flow, with an account-relationship diagram and a sample run report.

@@ -7,7 +7,7 @@ import type { RunLifecycleLog } from "./run-service.js";
 
 const dummyScenario: ValidatedScenario = {
   id: "test-scenario",
-  version: 1,
+  version: "1.0.0",
   schemaVersion: 1,
   name: "Test",
   description: "Test scenario",

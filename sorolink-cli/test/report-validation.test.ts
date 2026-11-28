@@ -11,7 +11,7 @@ const cliPath = resolve(__dirname, "../dist/cli.js");
 const validReport = {
   id: "run-123",
   scenarioId: "xlm-payment",
-  scenarioVersion: 1,
+  scenarioVersion: "1.0.0",
   scenarioSchemaVersion: 1,
   scenarioContentHash: "sha256:scenario",
   network: "testnet",

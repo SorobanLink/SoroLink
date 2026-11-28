@@ -246,29 +246,173 @@ jobs:
             *-result.json
 ```
 
-## GitLab CI Example
+## Complete GitHub Actions example with caching and artifact upload
+
+> **Status:** Tested against the `main` branch as of the most recent CI run.
+
+```yaml
+# .github/workflows/stellar-integration.yml
+name: Stellar Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-stellar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Cache node_modules for the CLI package
+      - name: Cache sorolink-cli dependencies
+        uses: actions/cache@v4
+        with:
+          path: sorolink-cli/node_modules
+          key: sorolink-cli-${{ runner.os }}-${{ hashFiles('sorolink-cli/package-lock.json') }}
+          restore-keys: sorolink-cli-${{ runner.os }}-
+
+      - name: Install SoroLink CLI
+        working-directory: ./sorolink-cli
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run all bundled scenarios
+        working-directory: ./sorolink-cli
+        run: |
+          EXIT_CODE=0
+          mkdir -p ../test-results
+          for scenario in xlm-payment issued-asset-payment missing-trustline insufficient-xlm-balance unfunded-destination; do
+            echo "Running $scenario..."
+            node dist/cli.js run "$scenario" --output json > "../test-results/${scenario}.json" || EXIT_CODE=1
+          done
+          exit $EXIT_CODE
+
+      - name: Upload scenario results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stellar-scenario-results
+          path: test-results/
+          retention-days: 7
+```
+
+### Parallel scenario execution (matrix strategy)
+
+> **Status:** Tested template — adjust scenario list to match your project.
+
+```yaml
+# .github/workflows/stellar-parallel.yml
+name: Stellar Scenarios (parallel)
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - xlm-payment
+          - issued-asset-payment
+          - missing-trustline
+          - insufficient-xlm-balance
+          - unfunded-destination
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache sorolink-cli dependencies
+        uses: actions/cache@v4
+        with:
+          path: sorolink-cli/node_modules
+          key: sorolink-cli-${{ runner.os }}-${{ hashFiles('sorolink-cli/package-lock.json') }}
+          restore-keys: sorolink-cli-${{ runner.os }}-
+
+      - name: Install SoroLink CLI
+        working-directory: ./sorolink-cli
+        run: npm ci && npm run build
+
+      - name: Run ${{ matrix.scenario }}
+        working-directory: ./sorolink-cli
+        run: node dist/cli.js run ${{ matrix.scenario }} --output json > ../result.json
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.scenario }}
+          path: result.json
+```
+
+## GitLab CI example
+
+> **Status:** Untested template — verify against your GitLab runner version.
 
 ```yaml
 # .gitlab-ci.yml
-test-stellar:
+stages:
+  - test
+
+.sorolink-base:
   image: node:20
-  stage: test
-  script:
+  cache:
+    key: sorolink-cli-${CI_COMMIT_REF_SLUG}
+    paths:
+      - sorolink-cli/node_modules/
+  before_script:
     - cd sorolink-cli
     - npm ci
     - npm run build
-    - node dist/cli.js run xlm-payment --output json
+    - cd ..
+
+test-xlm-payment:
+  extends: .sorolink-base
+  stage: test
+  script:
+    - cd sorolink-cli && node dist/cli.js run xlm-payment --output json | tee ../result-xlm.json
   artifacts:
     when: always
-    reports:
-      dotenv: test-results.json
+    paths:
+      - result-xlm.json
+    expire_in: 1 week
+
+test-issued-asset:
+  extends: .sorolink-base
+  stage: test
+  script:
+    - cd sorolink-cli && node dist/cli.js run issued-asset-payment --output json | tee ../result-asset.json
+  artifacts:
+    when: always
+    paths:
+      - result-asset.json
+    expire_in: 1 week
 ```
 
-## CircleCI Example
+## CircleCI example
+
+> **Status:** Untested template — verify against your CircleCI plan.
 
 ```yaml
 # .circleci/config.yml
 version: 2.1
+
+orbs:
+  node: circleci/node@5
 
 jobs:
   test-stellar:
@@ -276,15 +420,26 @@ jobs:
       - image: cimg/node:20.0
     steps:
       - checkout
+      - node/install-packages:
+          pkg-manager: npm
+          app-dir: sorolink-cli
       - run:
-          name: Install SoroLink CLI
+          name: Build SoroLink CLI
+          working_directory: sorolink-cli
+          command: npm run build
+      - run:
+          name: Run all scenarios
           command: |
-            cd sorolink-cli
-            npm ci
-            npm run build
-      - run:
-          name: Run Stellar tests
-          command: cd sorolink-cli && node dist/cli.js run xlm-payment --output json
+            mkdir -p test-results
+            EXIT_CODE=0
+            for scenario in xlm-payment issued-asset-payment missing-trustline; do
+              cd sorolink-cli && node dist/cli.js run "$scenario" --output json \
+                > "../test-results/${scenario}.json" && cd .. || { cd ..; EXIT_CODE=1; }
+            done
+            exit $EXIT_CODE
+      - store_artifacts:
+          path: test-results
+          destination: stellar-results
 
 workflows:
   test:
@@ -472,3 +627,7 @@ try {
 For issues or questions:
 - GitHub Issues: https://github.com/SoroLinkorg/SoroLink/issues
 - Documentation: https://github.com/SoroLinkorg/SoroLink/tree/main/sorolink-docs
+
+## Workflow Examples
+
+See the CLI README's [Common Workflows](../sorolink-cli/README.md#common-workflows) section for copy-paste bash examples: loop all scenarios, parse JSON with `jq`, fail CI on assertion failure, save timestamped results, and validate a custom scenario pre-commit.

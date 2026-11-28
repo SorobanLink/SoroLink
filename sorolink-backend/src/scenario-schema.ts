@@ -17,6 +17,12 @@ const nonNegativeAmount = { ...amount } as const;
 const signedAmount = { type: "string", pattern: "^-?(?:0|[1-9][0-9]{0,11})(?:\\.[0-9]{1,7})?$", maxLength: 21 } as const;
 const code = { type: "string", pattern: "^[A-Z0-9]{1,12}$", maxLength: 12 } as const;
 const resultCode = { type: "string", pattern: "^[a-z][a-z0-9_]{0,63}$", maxLength: 64 } as const;
+/**
+ * Issue #42: scenario versions are semantic version strings (MAJOR.MINOR.PATCH).
+ * Bundled scenarios start at 1.0.0; bump the version whenever the definition changes.
+ */
+export const SEMVER_PATTERN = "^(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})$";
+export const semverVersion = { type: "string", pattern: SEMVER_PATTERN, maxLength: 32 } as const;
 const memo = { type: "string", maxLength: TEXT_MEMO_MAX_BYTES, description: "Text memo: at most 28 UTF-8 bytes (not characters), including empty text. The server also rejects malformed Unicode and enforces the byte limit." } as const;
 
 export const scenarioSchemaV1 = {
@@ -27,9 +33,11 @@ export const scenarioSchemaV1 = {
   properties: {
     schemaVersion: { const: 1 },
     id,
-    version: { type: "integer", minimum: 1, maximum: 2_147_483_647 },
+    version: semverVersion,
     name: { type: "string", minLength: 1, maxLength: 120 },
     description: { type: "string", minLength: 1, maxLength: 500 },
+    author: { type: "string", maxLength: 120 },
+    tags: { type: "array", items: { type: "string", minLength: 1, maxLength: 64 }, maxItems: 20 },
     network: { const: "testnet" },
     accounts: {
       type: "array", minItems: 1, maxItems: SCENARIO_LIMITS.accounts,
@@ -50,12 +58,13 @@ export const scenarioSchemaV1 = {
         { type: "object", additionalProperties: false, required: ["id", "type", "account", "sellingAsset", "buyingAsset", "amount", "price"], properties: { id, type: { const: "manageSellOffer" }, account: id, sellingAsset: id, buyingAsset: id, amount: positiveAmount, price: positiveAmount } },
         { type: "object", additionalProperties: false, required: ["id", "type", "from", "to", "sendAsset", "sendMax", "destAsset", "destAmount", "path"], properties: { id, type: { const: "pathPaymentStrictReceive" }, from: id, to: id, sendAsset: id, sendMax: positiveAmount, destAsset: id, destAmount: positiveAmount, path: { type: "array", maxItems: 5, items: id } } },
         { type: "object", additionalProperties: false, required: ["id", "type", "from", "to", "sendAsset", "sendAmount", "destAsset", "destMin", "path"], properties: { id, type: { const: "pathPaymentStrictSend" }, from: id, to: id, sendAsset: id, sendAmount: positiveAmount, destAsset: id, destMin: positiveAmount, path: { type: "array", maxItems: 5, items: id } } },
+        { type: "object", additionalProperties: false, required: ["id", "type", "account"], properties: { id, type: { const: "createAccount" }, account: id } },
       ] },
     },
     assertions: {
       type: "array", minItems: 1, maxItems: SCENARIO_LIMITS.assertions,
       items: { oneOf: [
-        { type: "object", additionalProperties: false, required: ["type", "step", "memo"], properties: { type: { const: "transactionMemoEquals" }, step: id, memo } },
+        { type: "object", additionalProperties: false, required: ["type", "step", "memo"], properties: { type: { const: "transactionMemoEquals" }, step: id, memo: { ...memo, minLength: 1 } } },
         { type: "object", additionalProperties: false, required: ["type", "account", "asset", "amount"], properties: { type: { const: "balanceEquals" }, account: id, asset: id, amount } },
         { type: "object", additionalProperties: false, required: ["type", "account", "asset", "amount"], properties: { type: { const: "balanceChangedBy" }, account: id, asset: id, amount: signedAmount } },
         { type: "object", additionalProperties: false, required: ["type", "step"], properties: { type: { enum: ["stepSucceeded", "transactionConfirmed"] }, step: id } },

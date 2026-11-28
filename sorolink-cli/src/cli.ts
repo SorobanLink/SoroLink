@@ -2,6 +2,8 @@
 
 import { readFile as readFilePromises, writeFile, access } from "node:fs/promises";
 import { readdirSync, statSync } from "node:fs";
+import { readFile as readFilePromises } from "node:fs/promises";
+import { readdirSync, statSync, existsSync, readFileSync } from "node:fs";
 
 import { extname, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -53,6 +55,9 @@ export const DEFAULT_CLI_TIMEOUT_MS = 120_000;
 export const MIN_CLI_TIMEOUT_MS = 1;
 export const MAX_CLI_TIMEOUT_MS = 600_000;
 
+/** Networks the CLI refuses to target — exported for unit-test coverage (#65). */
+export const REJECTED_NETWORKS = new Set(["mainnet"]);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,7 +66,7 @@ const supportedExtensions = new Set([".json", ".yaml", ".yml"]);
 const maxFilesPerDirectory = 100;
 
 interface CliOptions {
-  output?: "human" | "json";
+  output?: "human" | "json" | "table";
   help?: boolean;
   version?: boolean;
   search?: string;
@@ -69,6 +74,62 @@ interface CliOptions {
   stdin?: boolean;
   format?: "json" | "yaml";
   force?: boolean;
+  /** Number of additional run attempts on transient failure. Default 0. */
+  retries?: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Progress spinner (#73)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+function createSpinner(enabled: boolean): { update(label: string): void; stop(): void } {
+  if (!enabled) return { update: () => {}, stop: () => {} };
+  let frame = 0;
+  let label = "";
+  const timer = setInterval(() => {
+    process.stdout.write(`\r${SPINNER_FRAMES[frame % SPINNER_FRAMES.length]} ${label}  `);
+    frame++;
+  }, 80);
+  return {
+    update(newLabel: string) { label = newLabel; },
+    stop() {
+      clearInterval(timer);
+      process.stdout.write("\r\x1b[K");
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RC config file (#68)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RcConfig {
+  backendUrl?: string;
+  outputFormat?: "human" | "json";
+  timeout?: number;
+  retries?: number;
+}
+
+function loadRcConfig(): RcConfig {
+  const candidates = [".sorolinkrc", ".sorolinkrc.json", ".sorolinkrc.yaml", ".sorolinkrc.yml"];
+  for (const name of candidates) {
+    if (!existsSync(name)) continue;
+    try {
+      const text = readFileSync(name, "utf-8");
+      const parsed: unknown = name.endsWith(".yaml") || name.endsWith(".yml")
+        ? parseYaml(text)
+        : JSON.parse(text);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as RcConfig;
+      }
+    } catch {
+      console.warn(`Warning: could not parse ${name} — ignoring`);
+    }
+    break;
+  }
+  return {};
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,15 +167,17 @@ Usage:
   sorolink validate <file>                       Validate a scenario file
   sorolink validate --stdin --format <format>    Validate a scenario from standard input
   sorolink validate-directory <dir>              Validate scenario files in a directory
+  sorolink version                               Print CLI version
   sorolink run <scenario-id>                     Run a bundled scenario
   sorolink run <file>                            Run a scenario from file
 
 Options:
-  --output <format>   Output format: human (default) or json
+  --output <format>   Output format: human (default), json, or table
   --search <term>     Filter scenarios by ID, name, or description (case-insensitive)
   --sort <field>      Sort results: id
   --stdin             Read the scenario definition from standard input
   --format <format>   Input format for standard input: json or yaml (required with --stdin)
+  --retries <n>       Retry run up to N times on transient failure (default: 0)
   --help              Show this help message
   --version           Show version information
 
@@ -148,10 +211,14 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       sort: { type: "string" },
       stdin: { type: "boolean" },
       format: { type: "string" },
+      retries: { type: "string" },
     },
     allowPositionals: true,
     strict: false,
   });
+
+  const retriesRaw = typeof values.retries === "string" ? parseInt(values.retries, 10) : NaN;
+  const retries = Number.isFinite(retriesRaw) && retriesRaw >= 0 ? retriesRaw : 0;
 
   return {
     command: positionals[0],
@@ -165,6 +232,7 @@ function parseCliArgs(): { command?: string; args: string[]; options: CliOptions
       stdin: Boolean(values.stdin),
       format: values.format === "json" || values.format === "yaml" ? values.format : undefined,
       force: Boolean(values.force),
+      retries,
     },
     failFast: Boolean(values["fail-fast"]),
   };
@@ -192,10 +260,11 @@ async function loadScenarioFile(filePath: string): Promise<ValidatedScenario> {
 // Execution helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Build a LedgerExecutionOptions object that prints progress in human mode (#66). */
+/** Build a LedgerExecutionOptions object that prints progress in human mode (#66, #73). */
 function buildExecutionOptions(
   options: CliOptions,
   signal?: AbortSignal,
+  spinner?: ReturnType<typeof createSpinner>,
 ): LedgerExecutionOptions {
   const execOptions: LedgerExecutionOptions = {
     stepTimeoutMs: BUNDLED_SCENARIO_DIR_TIMEOUT_MS,
@@ -204,9 +273,11 @@ function buildExecutionOptions(
   if (options.output === "human") {
     const m = markers(options.ascii ?? false);
     execOptions.onStep = (step) => {
+      spinner?.stop();
       console.log(`  ${statusMarker(step.status, m)} step  ${step.id}: ${step.message}`);
     };
     execOptions.onAssertion = (assertion) => {
+      spinner?.stop();
       console.log(
         `  ${statusMarker(assertion.status, m)} check ${assertion.type}: ${assertion.message}`,
       );
@@ -220,7 +291,7 @@ function buildRunReport(
   execution: LedgerExecution,
 ): {
   scenarioId: string;
-  scenarioVersion: number;
+  scenarioVersion: string;
   status: "passed" | "failed";
   steps: LedgerExecution["steps"];
   assertions: LedgerExecution["assertions"];
@@ -327,6 +398,24 @@ async function listCommand(options: CliOptions): Promise<number> {
           2,
         ),
       );
+    } else if (options.output === "table") {
+      const cols = { id: 0, name: 0, version: 0, description: 0 };
+      for (const s of scenarios) {
+        cols.id = Math.max(cols.id, s.id.length);
+        cols.name = Math.max(cols.name, s.name.length);
+        cols.version = Math.max(cols.version, String(s.version).length);
+        cols.description = Math.max(cols.description, s.description.length);
+      }
+      const maxWidth = (process.stdout.columns ?? 120) - 10;
+      cols.description = Math.min(cols.description, Math.max(10, maxWidth - cols.id - cols.name - cols.version - 9));
+      const pad = (s: string, w: number) => s.length > w ? s.slice(0, w - 1) + "…" : s.padEnd(w);
+      const sep = `${"─".repeat(cols.id + 2)}┼${"─".repeat(cols.name + 2)}┼${"─".repeat(cols.version + 2)}┼${"─".repeat(cols.description + 2)}`;
+      console.log(` ${pad("ID", cols.id)}  │ ${pad("Name", cols.name)}  │ ${pad("Ver", cols.version)}  │ ${pad("Description", cols.description)}`);
+      console.log(sep);
+      for (const s of scenarios) {
+        console.log(` ${pad(s.id, cols.id)}  │ ${pad(s.name, cols.name)}  │ ${pad(String(s.version), cols.version)}  │ ${pad(s.description, cols.description)}`);
+      }
+      console.log(`\n${scenarios.length} scenario(s)`);
     } else {
       console.log(`\nBundled Scenarios (${scenarios.length}):\n`);
       for (const scenario of scenarios) {
@@ -520,6 +609,7 @@ async function validateDirectoryCommand(dirPath: string, options: CliOptions): P
           }
         }
       }
+      if (total === 0) console.warn(`Warning: no .yaml or .json files found in ${absolute}`);
       console.log(`\n${total} file(s) processed: ${passed} valid, ${failed} failed`);
     }
     return ok ? 0 : 1;
@@ -594,8 +684,12 @@ async function runCommand(target: string, options: CliOptions): Promise<number> 
         console.log(`ID: ${scenario.id} (v${scenario.version})\n`);
       }
 
-      const execOptions = buildExecutionOptions(options, signal);
-      return gateway.execute(scenario, execOptions);
+      const spinner = createSpinner(options.output !== "json" && Boolean(process.stdout.isTTY));
+      spinner.update("starting…");
+      const execOptions = buildExecutionOptions(options, signal, spinner);
+      const result = await gateway.execute(scenario, execOptions);
+      spinner.stop();
+      return result;
     },
   );
 
@@ -872,10 +966,13 @@ async function runSuiteCommand(
 
 const COMPLETION_COMMANDS = [
   "list",
+  "show",
   "validate",
+  "validate-directory",
   "init",
   "run",
   "run-suite",
+  "diff",
   "completions",
   "doctor",
 ];
@@ -891,11 +988,24 @@ const COMPLETION_OPTIONS = [
   "--fail-fast",
 ];
 
-function generateCompletions(shell: "bash" | "zsh"): string {
+function generateCompletions(shell: "bash" | "zsh" | "fish"): string {
   const quotedCommands = COMPLETION_COMMANDS.map((c) => `"${c}"`).join(" ");
   const quotedOptions = COMPLETION_OPTIONS.map((o) => `"${o}"`).join(" ");
   const cmdList = COMPLETION_COMMANDS.join(" ");
   const optList = COMPLETION_OPTIONS.join(" ");
+
+  if (shell === "fish") {
+    const cmds = COMPLETION_COMMANDS.map((c) => `complete -c sorolink -f -n '__fish_use_subcommand' -a '${c}'`).join("\n");
+    const opts = COMPLETION_OPTIONS.map((o) => `complete -c sorolink -n 'not __fish_use_subcommand' -l '${o.replace(/^--/, "")}'`).join("\n");
+    return `# SoroLink CLI shell completion for fish.
+# Save to ~/.config/fish/completions/sorolink.fish
+
+${cmds}
+${opts}
+# File completions for run/validate subcommands
+complete -c sorolink -n '__fish_seen_subcommand_from run validate' -F
+`;
+  }
 
   if (shell === "zsh") {
     return `#compdef sorolink
@@ -1005,17 +1115,23 @@ async function initCommand(filename: string, force: boolean): Promise<number> {
 
 async function completionsCommand(shell: string): Promise<number> {
   const normalized = shell.toLowerCase();
-  if (normalized !== "bash" && normalized !== "zsh") {
-    console.error(`Error: Unsupported shell "${shell}". Use "bash" or "zsh".`);
-    console.error('Usage: sorolink completions <bash|zsh>');
+  if (normalized !== "bash" && normalized !== "zsh" && normalized !== "fish") {
+    console.error(`Error: Unsupported shell "${shell}". Use "bash", "zsh", or "fish".`);
+    console.error('Usage: sorolink completions <bash|zsh|fish>');
     return 1;
   }
-  console.log(generateCompletions(normalized));
+  console.log(generateCompletions(normalized as "bash" | "zsh" | "fish"));
   return 0;
 }
 
 export async function main(): Promise<number> {
-  const { command, args, options } = parseCliArgs();
+  const rc = loadRcConfig();
+  const { command, args, options: cliOptions } = parseCliArgs();
+  // Priority: CLI flags > env vars (handled inline) > rc file
+  const options: CliOptions = {
+    output: cliOptions.output ?? (rc.outputFormat as CliOptions["output"]),
+    ...cliOptions,
+  };
 
   if (options.version) {
     showVersion();
@@ -1028,6 +1144,9 @@ export async function main(): Promise<number> {
   }
 
   switch (command) {
+    case "version":
+      showVersion();
+      return 0;
     case "list":
       if (args.length > 0) {
         console.error("Error: Unexpected argument(s) for list command");
@@ -1102,7 +1221,7 @@ export async function main(): Promise<number> {
     case "completions":
       if (args.length === 0) {
         console.error('Error: Missing shell argument');
-        console.error('Usage: sorolink completions <bash|zsh>');
+        console.error('Usage: sorolink completions <bash|zsh|fish>');
         return 1;
       }
       return completionsCommand(args[0]);

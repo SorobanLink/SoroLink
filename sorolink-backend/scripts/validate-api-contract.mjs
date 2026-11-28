@@ -61,7 +61,7 @@ const backendContracts = {
   RunReport: {
     id: "string",
     scenarioId: "string",
-    scenarioVersion: "number",
+    scenarioVersion: "string",
     scenarioSchemaVersion: "1",
     scenarioContentHash: "string",
     network: '"testnet"',

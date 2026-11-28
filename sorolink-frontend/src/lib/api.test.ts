@@ -4,7 +4,7 @@ import { ApiError, RateLimitError, getRun, listScenarios, parseRetryAfter, start
 
 const scenario: ScenarioSummary = {
   id: "xlm-payment",
-  version: 1,
+  version: "1.0.0",
   name: "XLM payment",
   description: "Transfer XLM on Testnet.",
   contentHash: "sha256:scenario",
@@ -13,7 +13,7 @@ const scenario: ScenarioSummary = {
 const run: RunReport = {
   id: "run-123",
   scenarioId: scenario.id,
-  scenarioVersion: 1,
+  scenarioVersion: "1.0.0",
   scenarioSchemaVersion: 1,
   scenarioContentHash: scenario.contentHash,
   network: "testnet",

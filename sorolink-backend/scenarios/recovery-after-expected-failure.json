@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "recovery-after-expected-failure",
-  "version": 1,
+  "version": "1.0.0",
   "name": "Recovery after expected failure",
   "description": "Verify scenario execution continues after a matched expected failure: attempt asset payment without trustline (fails), create trustline, retry payment (succeeds)",
   "network": "testnet",

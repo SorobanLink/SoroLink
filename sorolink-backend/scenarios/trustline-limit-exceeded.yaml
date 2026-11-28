@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: trustline-limit-exceeded
-version: 1
+version: "1.0.0"
 name: Trustline limit exceeded
 description: Verify that an asset payment fails when it would exceed the recipient trustline limit.
 network: testnet

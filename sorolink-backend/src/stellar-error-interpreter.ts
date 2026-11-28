@@ -463,3 +463,14 @@ export function isStellarErrorRetryable(
 
   return true;
 }
+
+/**
+ * Returns the zero-based index of the first failing operation in a multi-op transaction,
+ * or -1 if no operation has a non-success result code.
+ *
+ * Stellar fails transactions atomically, but the operation result list still records
+ * individual result codes so the runner can pinpoint which step caused the rollback.
+ */
+export function failingOperationIndex(operationCodes: string[]): number {
+  return operationCodes.findIndex((code) => code !== "op_success");
+}

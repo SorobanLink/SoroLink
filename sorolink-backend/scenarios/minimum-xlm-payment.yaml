@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: minimum-xlm-payment
-version: 1
+version: "1.0.0"
 name: Minimum XLM payment
 description: Send minimum viable XLM amount (1 stroop = 0.0000001 XLM) to verify small payment handling.
 network: testnet

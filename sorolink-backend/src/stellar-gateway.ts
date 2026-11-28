@@ -500,14 +500,28 @@ export class StellarTestnetGateway implements LedgerGateway {
     ReturnType<typeof Operation.pathPaymentStrictReceive> |
     ReturnType<typeof Operation.pathPaymentStrictSend>
   >, memo?: string) {
-    const account = await this.withHorizonRetry(() => this.#server.loadAccount(source.publicKey()), "account loading");
-    const timebounds = await this.withHorizonRetry(() => this.#server.fetchTimebounds(60), "transaction submission");
-    const builder = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET, timebounds });
-    if (memo !== undefined) builder.addMemo(Memo.text(memo));
-    for (const operation of operations) builder.addOperation(operation);
-    const transaction = builder.build();
-    transaction.sign(source);
-    return this.withHorizonRetry(() => this.#server.submitTransaction(transaction), "transaction submission");
+    const buildAndSign = async () => {
+      const account = await this.withHorizonRetry(() => this.#server.loadAccount(source.publicKey()), "account loading");
+      const timebounds = await this.withHorizonRetry(() => this.#server.fetchTimebounds(60), "transaction submission");
+      const builder = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET, timebounds });
+      if (memo !== undefined) builder.addMemo(Memo.text(memo));
+      for (const operation of operations) builder.addOperation(operation);
+      const transaction = builder.build();
+      transaction.sign(source);
+      return transaction;
+    };
+    const transaction = await buildAndSign();
+    try {
+      return await this.withHorizonRetry(() => this.#server.submitTransaction(transaction), "transaction submission");
+    } catch (error) {
+      // tx_bad_seq: sequence number conflict under concurrent runs; refresh and retry once
+      const codes = extractStellarResultCodes(error);
+      if (codes?.transactionCode === "tx_bad_seq") {
+        const retryTx = await buildAndSign();
+        return this.withHorizonRetry(() => this.#server.submitTransaction(retryTx), "transaction submission");
+      }
+      throw error;
+    }
   }
 
   private async readBalanceOrZero(publicKey: string, asset: Asset, options: LedgerExecutionOptions, stepId: string): Promise<string> {

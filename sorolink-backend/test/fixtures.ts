@@ -2,7 +2,7 @@ import type { ScenarioDefinition } from "../src/domain.js";
 
 export function completeScenario(): ScenarioDefinition {
   return {
-    schemaVersion: 1, id: "complete-scenario", version: 1, name: "Complete scenario",
+    schemaVersion: 1, id: "complete-scenario", version: "1.0.0", name: "Complete scenario",
     description: "Exercises all declarative operations and assertions.", network: "testnet",
     accounts: [
       { id: "issuer", generate: true, fund: true },

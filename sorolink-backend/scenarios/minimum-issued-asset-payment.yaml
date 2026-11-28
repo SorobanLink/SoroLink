@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: minimum-issued-asset-payment
-version: 1
+version: "1.0.0"
 name: Minimum issued-asset transfer
 description: Transfer one stroop of an issued asset between two trusted holders.
 network: testnet

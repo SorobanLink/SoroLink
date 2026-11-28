@@ -137,7 +137,7 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
       const items = (await app.inject({ method: "GET", url: "/api/v1/scenarios" })).json().items;
       expect(items.length).toBeGreaterThanOrEqual(10);
       expect((await app.inject({ method: "GET", url: "/api/v1/scenarios/xlm-payment/versions?limit=1" })).json().items).toHaveLength(1);
-      expect((await app.inject({ method: "GET", url: "/api/v1/scenarios/xlm-payment/versions/1" })).json()).toMatchObject({ id: "xlm-payment", version: 1 });
+      expect((await app.inject({ method: "GET", url: "/api/v1/scenarios/xlm-payment/versions/1" })).json()).toMatchObject({ id: "xlm-payment", version: "1.0.0" });
       const exported = await app.inject({ method: "GET", url: "/api/v1/scenarios/xlm-payment/versions/1/export?format=yaml" });
       expect(exported.statusCode).toBe(200);
       expect(exported.headers["content-type"]).toContain("application/yaml");

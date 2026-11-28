@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: issued-asset-partial-redemption-transfer
-version: 1
+version: "1.0.0"
 name: Partial redemption followed by a holder transfer
 description: Redeem part of an issued-asset balance, then transfer part of the remainder to another holder.
 network: testnet

@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: trustline-balance-reduction
-version: 1
+version: "1.0.0"
 name: Reject a trustline limit below its balance
 description: Verify that Stellar rejects lowering an issued-asset trustline below its current balance without changing that balance.
 network: testnet

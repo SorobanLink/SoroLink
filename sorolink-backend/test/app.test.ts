@@ -113,7 +113,7 @@ describe("SoroLink API", () => {
       event: "run.started",
       runId,
       scenarioId: "xlm-payment",
-      scenarioVersion: 1,
+      scenarioVersion: "1.0.0",
       requestId: expect.any(String),
       status: "requested",
     });
@@ -179,7 +179,7 @@ describe("SoroLink API", () => {
 
     const started = await app.inject({ method: "POST", url: "/api/v1/runs/definitions", payload: definition });
     expect(started.statusCode).toBe(202);
-    expect(started.json()).toMatchObject({ scenarioId: definition.id, scenarioVersion: 1, scenarioSchemaVersion: 1 });
+    expect(started.json()).toMatchObject({ scenarioId: definition.id, scenarioVersion: "1.0.0", scenarioSchemaVersion: 1 });
     expect(started.json().scenarioContentHash).toBe(validated.json().contentHash);
   });
 
@@ -629,6 +629,96 @@ describe("SoroLink API", () => {
         const response = await app.inject({ method: "GET", url });
         expect(response.statusCode).toBe(503);
       }
+    });
+  });
+
+  // ── Issue #41: paginated runs listing ────────────────────────────────────
+  describe("runs listing pagination", () => {
+    // Allow every started run to be admitted regardless of completion timing.
+    const listingConfig: AppConfig = { ...config, maxConcurrentRuns: 10 };
+
+    async function startRuns(app: AppInstance, count: number): Promise<string[]> {
+      const ids: string[] = [];
+      for (let index = 0; index < count; index += 1) {
+        const response = await app.inject({ method: "POST", url: "/api/v1/runs", payload: { scenarioId: "xlm-payment", inputs: {} } });
+        expect(response.statusCode).toBe(202);
+        ids.push(response.json().id as string);
+      }
+      return ids;
+    }
+
+    it("defaults to a limit of 20 and omits nextOffset when every run fits", async () => {
+      const app = createApp({ config: listingConfig });
+      const ids = await startRuns(app, 3);
+      const response = await app.inject({ method: "GET", url: "/api/v1/runs" });
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.limit).toBe(20);
+      expect(body.offset).toBe(0);
+      expect(body.items).toHaveLength(3);
+      expect(body.items.map((run: { id: string }) => run.id).sort()).toEqual([...ids].sort());
+      expect(body).not.toHaveProperty("nextOffset");
+    });
+
+    it("returns nextOffset while more runs exist and pages through every run exactly once", async () => {
+      let now = Date.parse("2026-01-01T00:00:00.000Z");
+      const app = createApp({ config: listingConfig, clock: () => (now += 1_000) });
+      const ids = await startRuns(app, 5);
+
+      const first = (await app.inject({ method: "GET", url: "/api/v1/runs?limit=2" })).json();
+      expect(first.items).toHaveLength(2);
+      expect(first.nextOffset).toBe(2);
+
+      const second = (await app.inject({ method: "GET", url: `/api/v1/runs?limit=2&offset=${first.nextOffset}` })).json();
+      expect(second.items).toHaveLength(2);
+      expect(second.nextOffset).toBe(4);
+
+      const third = (await app.inject({ method: "GET", url: `/api/v1/runs?limit=2&offset=${second.nextOffset}` })).json();
+      expect(third.items).toHaveLength(1);
+      expect(third).not.toHaveProperty("nextOffset");
+
+      const seen = [...first.items, ...second.items, ...third.items].map((run: { id: string }) => run.id);
+      expect(new Set(seen).size).toBe(5);
+      // Newest first.
+      expect(seen).toEqual([...ids].reverse());
+    });
+
+    it("accepts the maximum limit of 100", async () => {
+      const response = await createApp({ config: listingConfig }).inject({ method: "GET", url: "/api/v1/runs?limit=100" });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().limit).toBe(100);
+    });
+
+    it("returns an empty page for an offset past the end", async () => {
+      const app = createApp({ config: listingConfig });
+      await startRuns(app, 1);
+      const response = await app.inject({ method: "GET", url: "/api/v1/runs?offset=10" });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().items).toEqual([]);
+      expect(response.json()).not.toHaveProperty("nextOffset");
+    });
+
+    it.each([
+      ["limit=0", "limit"],
+      ["limit=101", "limit"],
+      ["limit=-1", "limit"],
+      ["limit=1.5", "limit"],
+      ["limit=abc", "limit"],
+      ["offset=-1", "offset"],
+      ["offset=1.5", "offset"],
+      ["offset=1e2", "offset"],
+    ])("rejects out-of-range or malformed %s with a descriptive 400", async (query, parameter) => {
+      const response = await createApp({ config: listingConfig }).inject({ method: "GET", url: `/api/v1/runs?${query}` });
+      expect(response.statusCode).toBe(400);
+      const error = response.json().error;
+      expect(error.code).toBe("INVALID_REQUEST");
+      expect(error.message).toContain(parameter);
+    });
+
+    it("rejects unknown query parameters with 400", async () => {
+      const response = await createApp({ config: listingConfig }).inject({ method: "GET", url: "/api/v1/runs?page=2" });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error.code).toBe("INVALID_REQUEST");
     });
   });
 

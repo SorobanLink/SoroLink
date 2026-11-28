@@ -105,7 +105,7 @@ export class PublishedScenarioRepository {
       ) sv ON true
       WHERE s.visibility = 'published' AND s.status = 'active'
       ORDER BY s.public_slug`);
-    return result.rows.map((row) => ({ id: row.public_slug, version: row.version_number, name: row.definition.name, description: row.definition.description, contentHash: row.content_hash }));
+    return result.rows.map((row) => ({ id: row.public_slug, version: semanticVersionOf(row.definition), name: row.definition.name, description: row.definition.description, contentHash: row.content_hash }));
   }
 
   async latest(slug: string): Promise<ValidatedScenario | undefined> {
@@ -115,6 +115,18 @@ export class PublishedScenarioRepository {
 
   async version(slug: string, version: number): Promise<ValidatedScenario | undefined> {
     const result = await this.database.query<VersionRow>(`${versionSelect} WHERE s.public_slug = $1 AND s.visibility = 'published' AND sv.version_number = $2`, [slug, version]);
+    return hydrate(result.rows[0]);
+  }
+
+  /**
+   * Issue #42: resolve the newest published row whose definition carries the
+   * requested semantic version. Rows published before semver versions
+   * (integer `version` N) are matched as "N.0.0".
+   */
+  async semanticVersion(slug: string, version: string): Promise<ValidatedScenario | undefined> {
+    const result = await this.database.query<VersionRow>(`${versionSelect} WHERE s.public_slug = $1 AND s.visibility = 'published'
+      AND (sv.definition->>'version' = $2 OR (jsonb_typeof(sv.definition->'version') = 'number' AND (sv.definition->>'version') || '.0.0' = $2))
+      ORDER BY sv.version_number DESC LIMIT 1`, [slug, version]);
     return hydrate(result.rows[0]);
   }
 
@@ -153,7 +165,9 @@ export async function reconcileFixture(client: Queryable, fixture: ValidatedScen
   const existing = latest.rows[0];
   if (existing && comparable(existing.definition) === comparable(fixture)) return;
   const version = (existing?.version_number ?? 0) + 1;
-  const candidate = prepareScenario({ ...stripHash(fixture), version });
+  // Issue #42: the fixture's own semantic version is published as-is;
+  // version_number is only the internal publication sequence.
+  const candidate = prepareScenario(stripHash(fixture));
   await client.query(`INSERT INTO scenario_versions(scenario_id, version_number, schema_version, content_hash, definition, source_format)
     VALUES ($1, $2, $3, $4, $5::jsonb, 'json') ON CONFLICT (scenario_id, content_hash) DO NOTHING`,
   [scenarioId, version, candidate.schemaVersion, candidate.contentHash, JSON.stringify(stripHash(candidate))]);
@@ -189,9 +203,14 @@ export async function previewFixture(client: Queryable, fixture: ValidatedScenar
 }
 
 function comparable(value: ValidatedScenario): string {
-  const definition = stripHash(value) as Record<string, unknown>;
-  delete definition.version;
-  return canonicalJson(definition);
+  // Issue #42: the semantic version is part of the definition, so a version
+  // bump publishes a new row even when nothing else changed.
+  return canonicalJson(stripHash(value));
+}
+
+/** Issue #42: legacy rows stored an integer version N; expose it as "N.0.0". */
+function semanticVersionOf(definition: { version: unknown }): string {
+  return typeof definition.version === "number" ? `${definition.version}.0.0` : String(definition.version);
 }
 
 function stripHash(value: ValidatedScenario): Omit<ValidatedScenario, "contentHash"> {
@@ -213,13 +232,19 @@ function hydrate(row: VersionRow | undefined): ValidatedScenario | undefined {
  * passed through to a caller (and, eventually, the ledger gateway).
  */
 function verifyIntegrity(row: VersionRow): ValidatedScenario {
+  // Issue #42: rows published before semantic versions carry the integer
+  // publication number as `version`; their content hash covers that integer.
+  const legacyVersion = (row.definition as { version: unknown }).version;
+  const isLegacy = typeof legacyVersion === "number";
+  if (isLegacy && legacyVersion !== row.version_number) throw new ScenarioIntegrityError();
   let validated: ScenarioDefinition;
   try {
-    validated = validateScenarioDefinition(row.definition);
+    validated = validateScenarioDefinition(isLegacy ? { ...row.definition, version: semanticVersionOf(row.definition) } : row.definition);
   } catch {
     throw new ScenarioIntegrityError();
   }
-  if (validated.version !== row.version_number || contentHash(validated) !== row.content_hash) {
+  const hashed = isLegacy ? ({ ...validated, version: legacyVersion } as unknown as ScenarioDefinition) : validated;
+  if (contentHash(hashed) !== row.content_hash) {
     throw new ScenarioIntegrityError();
   }
   return { ...validated, contentHash: row.content_hash };

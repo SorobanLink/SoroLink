@@ -20,21 +20,21 @@ vi.mock("next/navigation", () => ({
 const mockScenarios: api.ScenarioSummary[] = [
   {
     id: "xlm-payment",
-    version: 1,
+    version: "1.0.0",
     name: "XLM payment",
     description: "Fund two Testnet accounts, send XLM, and verify the recipient balance.",
     contentHash: "hash1",
   },
   {
     id: "issued-asset-payment",
-    version: 1,
+    version: "1.0.0",
     name: "Issued asset payment",
     description: "Issue TESTUSD and send it to a recipient through a trustline.",
     contentHash: "hash2",
   },
   {
     id: "missing-trustline",
-    version: 1,
+    version: "1.0.0",
     name: "Missing trustline",
     description: "Verify that an asset payment fails when the recipient has no trustline.",
     contentHash: "hash3",
@@ -44,7 +44,7 @@ const mockScenarios: api.ScenarioSummary[] = [
 const mockRun: RunReport = {
   id: "run-123",
   scenarioId: "test-scenario",
-  scenarioVersion: 1,
+  scenarioVersion: "1.0.0",
   scenarioSchemaVersion: 1,
   scenarioContentHash: "hash",
   network: "testnet",
@@ -481,6 +481,58 @@ describe("Dashboard component catalogue loading and retry", () => {
     });
   });
 
+  it("shows a descriptive error with a working Retry when the scenario fetch returns a non-2xx status", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ error: { code: "DATABASE_UNAVAILABLE", message: "The persistent scenario catalogue is temporarily unavailable.", requestId: "req-1", details: [] } }),
+        { status: 503, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Couldn't load scenarios")).toBeDefined();
+    });
+    expect(
+      screen.getByText("The scenario service responded with HTTP 503: The persistent scenario catalogue is temporarily unavailable. (DATABASE_UNAVAILABLE)"),
+    ).toBeDefined();
+    expect(screen.getAllByRole("alert").some((element) => element.textContent?.includes("Couldn't load scenarios"))).toBe(true);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ items: mockScenarios }), { status: 200, headers: { "content-type": "application/json" } }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Couldn't load scenarios")).toBeNull();
+      expect(screen.getAllByText("XLM payment").length).toBeGreaterThan(0);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a descriptive error when the scenario fetch returns a non-2xx status without a JSON body", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response("Bad Gateway", { status: 502 }));
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("The scenario service responded with HTTP 502: The request failed. (UNKNOWN_ERROR)")).toBeDefined();
+    });
+    expect(screen.getByRole("button", { name: "Retry" })).toBeDefined();
+  });
+
+  it("shows a connectivity message when the scenario fetch throws a network error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Could not reach the scenario service. Check your connection or that the backend is running, then retry.")).toBeDefined();
+    });
+    expect(screen.getByRole("button", { name: "Retry" })).toBeDefined();
+  });
+
   it("displays distinct empty success state", async () => {
     vi.spyOn(api, "listScenarios").mockResolvedValue([]);
     
@@ -901,7 +953,7 @@ describe("Scenario definition preview, rate limiting, and ARIA announcements (#3
   it("opens scenario preview panel and fetches detail when Details button is clicked (#32)", async () => {
     const mockDetail: api.ScenarioDetail = {
       id: "xlm-payment",
-      version: 1,
+      version: "1.0.0",
       name: "XLM payment",
       description: "Detailed description of XLM payment.",
       contentHash: "hash-full-123456789",
@@ -1484,5 +1536,87 @@ describe("Scenario Trustline Filtering, Copy-to-Clipboard, and Run Timestamps (#
     const activeCreatedEl = await screen.findByTestId("run-created");
     expect(activeCreatedEl.getAttribute("title")).toBe(createdIso);
     expect(screen.queryByTestId("run-completed")).toBeNull();
+  });
+});
+
+describe("Scenario search by keyword (#7)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockSearchParams = new URLSearchParams();
+    vi.spyOn(api, "listScenarios").mockResolvedValue(mockScenarios);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    mockSearchParams = new URLSearchParams();
+  });
+
+  async function renderLoaded() {
+    render(<Dashboard />);
+    await waitFor(() => {
+      expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+    });
+    return screen.getByRole("searchbox", { name: "Search scenarios by name, ID, or description" });
+  }
+
+  it("renders an accessible, labelled search input above the scenario list", async () => {
+    const input = await renderLoaded();
+    expect(input.getAttribute("type")).toBe("search");
+    expect(screen.getByLabelText("Search scenarios by name, ID, or description")).toBe(input);
+    const grid = screen.getByRole("tabpanel");
+    expect(input.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("filters in real time by case-insensitive substring of the scenario ID", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "MISSING-TRUST" } });
+
+    expect(screen.getByText("01 AVAILABLE")).toBeDefined();
+    expect(screen.getAllByText("Missing trustline").length).toBeGreaterThan(0);
+    expect(screen.queryByText("XLM payment")).toBeNull();
+    expect(screen.queryByText("Issued asset payment")).toBeNull();
+  });
+
+  it("filters by case-insensitive substring of the description and updates the count", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "testusd" } });
+
+    expect(screen.getByText("01 AVAILABLE")).toBeDefined();
+    expect(screen.getAllByText("Issued asset payment").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Missing trustline")).toBeNull();
+
+    fireEvent.change(input, { target: { value: "RECIPIENT" } });
+    expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+  });
+
+  it("restores the full list when the input is cleared", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "xlm-payment" } });
+    expect(screen.getByText("01 AVAILABLE")).toBeDefined();
+
+    fireEvent.change(input, { target: { value: "" } });
+    expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+    expect(screen.getAllByText("XLM payment").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Issued asset payment").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Missing trustline").length).toBeGreaterThan(0);
+  });
+
+  it("restores the full list via the Clear search button", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "trustline" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect((input as HTMLInputElement).value).toBe("");
+    expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+  });
+
+  it("shows a helpful message when nothing matches", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "no-such-scenario" } });
+
+    expect(screen.getByText("00 AVAILABLE")).toBeDefined();
+    expect(screen.getByText("No scenarios found")).toBeDefined();
+    expect(screen.getByText(/No scenarios match "no-such-scenario"/)).toBeDefined();
   });
 });

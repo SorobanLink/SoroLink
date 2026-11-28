@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: basic-payment-with-checks
-version: 1
+version: "1.0.0"
 name: Basic payment with account checks
 description: Send XLM between two accounts and verify both accounts exist after the transaction.
 network: testnet

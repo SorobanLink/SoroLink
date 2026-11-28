@@ -64,6 +64,8 @@ SoroLink is useful for:
 
 Unlike Stellar Lab, which requires manual step-through and copy/paste workflow, SoroLink executes multi-step flows declaratively and generates structured reports. Unlike the Stellar Quickstart Docker image, SoroLink focuses on scenario-driven testing rather than node operation. Unlike hand-written SDK tests, SoroLink provides repeatable scenario definitions with expected-failure assertions and CI-friendly JSON output.
 
+For a detailed side-by-side breakdown of automation, repeatability, CI support, error messages, scenario sharing, and learning curve, see [sorolink-docs/COMPARISON.md](sorolink-docs/COMPARISON.md).
+
 ## Bundled scenarios
 
 SoroLink includes 13 bundled scenarios for Testnet integration testing:
@@ -85,7 +87,9 @@ SoroLink includes 13 bundled scenarios for Testnet integration testing:
 
 Each run generates fresh Testnet accounts, so repeated executions remain
 isolated from previous runs. See [SCENARIOS.md](sorolink-docs/SCENARIOS.md) for
-complete scenario documentation.
+complete scenario documentation and
+[LIFECYCLE_ISSUED_ASSET_PAYMENT.md](sorolink-docs/LIFECYCLE_ISSUED_ASSET_PAYMENT.md)
+for a step-by-step walkthrough of the issued-asset payment flow.
 
 ## How a run works
 
@@ -129,6 +133,10 @@ For deeper technical context, read the
 [architecture documentation](sorolink-docs/ARCHITECTURE.md).
 
 ## Quick start
+
+> **Windows users:** See [sorolink-docs/WINDOWS_SETUP.md](sorolink-docs/WINDOWS_SETUP.md)
+> for PowerShell and Git Bash equivalents, Node.js installation via nvm-windows or
+> winget, and Windows-specific troubleshooting.
 
 ### Prerequisites
 
@@ -337,7 +345,10 @@ limits active executions, while `MAX_STORED_RUNS` separately limits only the
 in-memory report store. When that store is full it evicts a terminal report; it
 does not evict active runs. `RUN_RETENTION_MS` applies to completed reports in
 memory and PostgreSQL, but PostgreSQL rows remain stored. The two rate limits
-share `RATE_LIMIT_WINDOW_MS` and are process-local.
+share `RATE_LIMIT_WINDOW_MS` and are process-local. For a detailed explanation
+of how the limits interact, 429 response format, and example configurations for
+single-user, team, and public deployments, see
+[sorolink-docs/RATE_LIMITING.md](sorolink-docs/RATE_LIMITING.md).
 
 `DATABASE_URL` is for the application role only. Set `DATABASE_MIGRATION_URL`
 for the one-shot migration commands, using the separate migration role; it does
@@ -367,7 +378,10 @@ smoke test is documented in the [backend README](sorolink-backend/README.md).
 The default `PERSISTENCE_MODE=disabled` configuration keeps runtime state in
 memory. Published scenario catalogue persistence can be enabled with PostgreSQL
 after applying the checked migrations and configuring the required database
-roles. See the [persistence guide](sorolink-docs/PERSISTENCE.md) before enabling it.
+roles. See the [persistence guide](sorolink-docs/PERSISTENCE.md) for the contract and
+the [database bootstrap guide](sorolink-docs/DATABASE_BOOTSTRAP.md) for a
+step-by-step walkthrough of creating the database, running
+`bootstrap-roles.sql`, applying migrations, and verifying the setup.
 
 ## Deployment
 
@@ -398,6 +412,8 @@ The Render free tier sleeps after 15 minutes of inactivity. To keep the backend 
 Active work is tracked in [GitHub Issues](https://github.com/SoroLinkorg/SoroLink/issues).
 
 ## Troubleshooting
+
+For a comprehensive list of failure modes (rate limiting, sequence conflicts, Testnet resets, CORS errors, missing trustlines, Friendbot outages, database migrations, CLI exit codes, and more) see [sorolink-docs/TROUBLESHOOTING.md](sorolink-docs/TROUBLESHOOTING.md).
 
 ### The deployed dashboard takes a long time to load
 
