@@ -29,6 +29,12 @@ export interface AppConfig {
   databaseConnectionTimeoutMs: number;
   databaseQueryTimeoutMs: number;
   databaseIdleTimeoutMs: number;
+  /** How long SIGTERM waits for active runs before cancelling them. Default 30 s. */
+  shutdownDrainTimeoutMs?: number;
+  /** Cooldown before an open Horizon circuit allows a half-open probe. Default 30 s. */
+  horizonCircuitCooldownMs?: number;
+  /** Timeout for each dependency probe performed by GET /ready. Default 3 s. */
+  readinessTimeoutMs?: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -84,6 +90,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseConnectionTimeoutMs: integerEnv(env, "DATABASE_CONNECTION_TIMEOUT_MS", 5_000, 500, 30_000),
     databaseQueryTimeoutMs: integerEnv(env, "DATABASE_QUERY_TIMEOUT_MS", 5_000, 100, 30_000),
     databaseIdleTimeoutMs: integerEnv(env, "DATABASE_IDLE_TIMEOUT_MS", 10_000, 1_000, 60_000),
+    shutdownDrainTimeoutMs: integerEnv(env, "SHUTDOWN_DRAIN_TIMEOUT_MS", 30_000, 0, 600_000),
+    horizonCircuitCooldownMs: integerEnv(env, "HORIZON_CIRCUIT_COOLDOWN_MS", 30_000, 1_000, 600_000),
+    readinessTimeoutMs: integerEnv(env, "READINESS_TIMEOUT_MS", 3_000, 100, 30_000),
     ...(env.DATABASE_URL && { databaseUrl: env.DATABASE_URL }),
     ...(env.SCENARIO_DIRECTORY && { scenarioDirectory: env.SCENARIO_DIRECTORY }),
   };

@@ -4,7 +4,7 @@ import type { ScenarioVersionSummary } from "../published-scenarios.js";
 
 export interface ApiOperations {
   getHealth: { response: { status: "ok"; network: "testnet" } };
-  getReadiness: { response: { status: "ready" | "unavailable"; network: "testnet"; database: "disabled" | "ready" | "unavailable" } };
+  getReadiness: { response: { status: "ready" | "unavailable"; network: "testnet"; database: "disabled" | "ready" | "unavailable"; services: { horizon: "ready" | "unavailable"; database: "disabled" | "ready" | "unavailable" } } };
   listScenarios: { response: { items: ScenarioSummary[] } };
   getScenario: { params: { scenarioId: string }; response: ValidatedScenario };
   /** Issue #70 — returns the canonical v1 scenario JSON Schema. */

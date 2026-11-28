@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { LedgerGateway, RunError, RunReport, RunSummary, ValidatedScenario } from "./domain.js";
 import type { RunPage, RunStore } from "./run-store.js";
-import { RunCapacityError, RunTimeoutError, SafeRunError, ShutdownError, withTimeout } from "./errors.js";
+import { RunAlreadyTerminalError, RunCapacityError, RunNotFoundError, RunTimeoutError, SafeRunError, ShutdownError, withTimeout } from "./errors.js";
 import { isStableStellarErrorCode } from "./stellar-error-interpreter.js";
 
 const emptySummary = (): RunSummary => ({
@@ -13,6 +13,7 @@ const emptySummary = (): RunSummary => ({
 
 const SAFE_RUN_ERROR_CODES = new Set([
   "ASSERTION_FAILED",
+  "CIRCUIT_OPEN",
   "FRIENDBOT_UNAVAILABLE",
   "HORIZON_UNAVAILABLE",
   "INTERNAL_ERROR",
@@ -93,6 +94,30 @@ export class RunService {
     if (this.#activePromises.size > 0) {
       await Promise.allSettled([...this.#activePromises]);
     }
+  }
+
+  /**
+   * Drain-timeout fallback: mark every still-active run cancelled with
+   * SERVER_SHUTDOWN, abort its execution, and wait (bounded by `graceMs`)
+   * for the executions to unwind so their final state is persisted.
+   */
+  async cancelActive(graceMs = 1_000): Promise<number> {
+    this.#draining = true;
+    const ids = [...this.#cancelControllers.keys()];
+    const shutdown = new ShutdownError().report;
+    await Promise.allSettled(ids.map(async (id) => {
+      const run = await this.store.get(id);
+      if (!run || run.status === "passed" || run.status === "failed" || run.status === "cancelled") return;
+      await this.store.update(id, { status: "cancelled", completedAt: new Date(this.now()).toISOString(), error: structuredClone(shutdown) });
+    }));
+    for (const id of ids) this.#cancelControllers.get(id)?.abort(new ShutdownError());
+    if (this.#activePromises.size > 0) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const grace = new Promise<void>((resolve) => { timer = setTimeout(resolve, graceMs); timer.unref?.(); });
+      try { await Promise.race([Promise.allSettled([...this.#activePromises]), grace]); }
+      finally { if (timer) clearTimeout(timer); }
+    }
+    return ids.length;
   }
 
   async start(scenario: ValidatedScenario, requestId?: string): Promise<RunReport> {

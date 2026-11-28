@@ -29,6 +29,7 @@ import {
 } from "./errors.js";
 import { interpretOperationCode, interpretTransactionCode, isStellarErrorRetryable, normalizeStellarResultCode } from "./stellar-error-interpreter.js";
 import { isTextMemo } from "./text-memo.js";
+import type { CircuitBreaker } from "./circuit-breaker.js";
 
 export type { FriendbotRetryConfig };
 
@@ -41,6 +42,8 @@ export interface StellarGatewayOptions {
   fundingConcurrency?: number;
   /** Issue #83: injectable clock for deterministic step-timing tests. */
   clock?: Clock;
+  /** Circuit breaker shared by every Horizon call; fast-fails with CIRCUIT_OPEN while open. */
+  horizonCircuitBreaker?: CircuitBreaker;
 }
 
 /** Issue #83: a clock abstraction so timing tests can avoid real delays. */
@@ -589,8 +592,11 @@ export class StellarTestnetGateway implements LedgerGateway {
 
     while (true) {
       try {
-        return await operation();
+        const breaker = this.#options.horizonCircuitBreaker;
+        return await (breaker ? breaker.execute(operation, isHorizonServiceFailure) : operation());
       } catch (error) {
+        // An open circuit must fail fast — never retry against it.
+        if (error instanceof SafeRunError && error.report.code === "CIRCUIT_OPEN") throw error;
         if (!isRetryableHorizonError(error)) {
           if (isTimeoutError(error)) throw horizonTimeoutError(request);
           throw error;
@@ -717,6 +723,17 @@ function isTimeoutError(error: unknown): boolean {
     || name === "aborterror"
     || message.includes("timeout")
     || message.includes("timed out");
+}
+/**
+ * Errors that indicate Horizon itself is degraded (network failures, timeouts,
+ * 429 and 5xx). Ordinary 4xx responses such as 404 or a 400 tx_failed prove
+ * Horizon is answering and therefore do not count against the circuit.
+ */
+export function isHorizonServiceFailure(error: unknown): boolean {
+  if (!isRecord(error)) return true;
+  const status = isRecord(error.response) ? error.response.status : undefined;
+  if (typeof status === "number") return status === 429 || status >= 500 || status === 408;
+  return true;
 }
 function isRetryableHorizonError(error: unknown): boolean {
   if (!isRecord(error)) return false;
