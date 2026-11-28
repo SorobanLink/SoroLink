@@ -270,11 +270,21 @@ describe("SoroLink API", () => {
     expect(response.json().items[0].contentHash).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
+  it.each(["json", "csv"])("returns 501 for run export in %s format without persistence", async (format) => {
+    const response = await createApp().inject({
+      method: "GET",
+      url: `/api/v1/runs/export?format=${format}`,
+    });
+    expect(response.statusCode).toBe(501);
+    expect(response.json().error.code).toBe("PERSISTENCE_REQUIRED");
+  });
+
   it("publishes an OpenAPI 3.1 document containing declarative endpoints", async () => {
     const response = await createApp().inject({ method: "GET", url: "/openapi.json" });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ openapi: "3.1.0" });
     expect(response.json().paths).toHaveProperty("/api/v1/runs/definitions");
+    expect(response.json().paths).toHaveProperty("/api/v1/runs/export");
     expect(response.json().paths).toHaveProperty("/api/v1/scenarios/{scenarioId}/versions");
     expect(response.json().paths).toHaveProperty("/api/v1/scenarios/{scenarioId}/versions/{version}/export");
     expect(response.json().components.schemas).toHaveProperty("ScenarioV1");
@@ -297,6 +307,65 @@ describe("SoroLink API", () => {
     expect(started.statusCode).toBe(202);
     expect(started.json()).toMatchObject({ scenarioId: definition.id, scenarioVersion: "1.0.0", scenarioSchemaVersion: 1 });
     expect(started.json().scenarioContentHash).toBe(validated.json().contentHash);
+  });
+
+  it("performs semantic dry-run validation without calling Testnet", async () => {
+    const execute = vi.fn(async (_scenario: Scenario): Promise<LedgerExecution> => ({
+      steps: [],
+      assertions: [],
+    }));
+    const app = createApp({ ledger: { execute } });
+    const definition = completeScenario();
+    definition.accounts = [{ id: "sender", generate: true, fund: true }];
+    definition.steps = [{
+      id: "pay",
+      type: "payment",
+      from: "missing-sender",
+      to: "missing-recipient",
+      asset: "xlm",
+      amount: "1",
+    }];
+    definition.assertions = [{ type: "accountExists", account: "missing-account" }];
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/scenarios/validate?dryRun=true",
+      payload: definition,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().valid).toBe(false);
+    expect(response.json().errors).toBeInstanceOf(Array);
+    expect(response.json().errors.length).toBeGreaterThan(0);
+    expect(response.json().error.details.length).toBeGreaterThan(0);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("treats dryRun=true as a full local validation and schema-only validation as semantic-free", async () => {
+    const execute = vi.fn(async (_scenario: Scenario): Promise<LedgerExecution> => ({
+      steps: [],
+      assertions: [],
+    }));
+    const app = createApp({ ledger: { execute } });
+    const definition = completeScenario();
+    definition.accounts = [{ id: "issuer", generate: true, fund: true }];
+
+    const schemaOnly = await app.inject({
+      method: "POST",
+      url: "/api/v1/scenarios/validate",
+      payload: definition,
+    });
+    expect(schemaOnly.statusCode).toBe(200);
+
+    const dryRun = await app.inject({
+      method: "POST",
+      url: "/api/v1/scenarios/validate?dryRun=true",
+      payload: definition,
+    });
+    expect(dryRun.statusCode).toBe(400);
+    expect(dryRun.json().valid).toBe(false);
+    expect(dryRun.json().errors.length).toBeGreaterThan(0);
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it("validates and starts a raw YAML scenario", async () => {
@@ -431,6 +500,11 @@ describe("SoroLink API", () => {
     await vi.waitFor(async () => {
       const response = await app.inject({ method: "GET", url: `/api/v1/runs/${id}` });
       expect(response.json().status).toBe("passed");
+      expect(response.json().summary.totalDurationMs).toBeGreaterThanOrEqual(0);
+      for (const step of response.json().steps) {
+        expect(step.startedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+        expect(step.durationMs).toBeGreaterThanOrEqual(0);
+      }
       expect(response.body).not.toMatch(/S[A-Z2-7]{55}/);
     });
   });

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Dashboard, filterScenario, formatStepDuration, getPollingDelay } from "./dashboard";
+import { Dashboard, QUICK_START_URL, SCENARIO_SKELETON_ROWS, filterScenario, formatStepDuration, getPollingDelay, truncateHash } from "./dashboard";
 import * as api from "@/lib/api";
 import { type RunReport } from "@/lib/api";
 
@@ -539,8 +539,7 @@ describe("Dashboard component catalogue loading and retry", () => {
     render(<Dashboard />);
     
     await waitFor(() => {
-      expect(screen.getByText("No scenarios found")).toBeDefined();
-      expect(screen.getByText("No scenarios match the selected filter (\"All\").")).toBeDefined();
+      expect(screen.getByText("No scenarios available")).toBeDefined();
       expect(screen.queryByText("Couldn't load scenarios")).toBeNull();
     });
   });
@@ -1469,6 +1468,8 @@ describe("Scenario Trustline Filtering, Copy-to-Clipboard, and Run Timestamps (#
     });
 
     const copyRunBtn = screen.getByRole("button", { name: "Copy run ID" });
+    // Passing steps start collapsed (#14); expand to reach the transaction actions.
+    fireEvent.click(screen.getByRole("button", { name: "Send Payment" }));
     const copyTxBtn = screen.getByRole("button", { name: "Copy transaction tx-hash-abcdef123456" });
 
     await act(async () => {
@@ -1543,6 +1544,10 @@ describe("Scenario search by keyword (#7)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockSearchParams = new URLSearchParams();
+describe("Collapsible step sections in run report (#14)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockSearchParams = new URLSearchParams("?runId=run-123");
     vi.spyOn(api, "listScenarios").mockResolvedValue(mockScenarios);
   });
 
@@ -1618,5 +1623,256 @@ describe("Scenario search by keyword (#7)", () => {
     expect(screen.getByText("00 AVAILABLE")).toBeDefined();
     expect(screen.getByText("No scenarios found")).toBeDefined();
     expect(screen.getByText(/No scenarios match "no-such-scenario"/)).toBeDefined();
+  it("renders an accessible, labelled search input above the scenario list", async () => {
+    const input = await renderLoaded();
+    expect(input.getAttribute("type")).toBe("search");
+    expect(screen.getByLabelText("Search scenarios by name, ID, or description")).toBe(input);
+    const grid = screen.getByRole("tabpanel");
+    expect(input.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("filters in real time by case-insensitive substring of the scenario ID", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "MISSING-TRUST" } });
+
+    expect(screen.getByText("01 AVAILABLE")).toBeDefined();
+    expect(screen.getAllByText("Missing trustline").length).toBeGreaterThan(0);
+    expect(screen.queryByText("XLM payment")).toBeNull();
+    expect(screen.queryByText("Issued asset payment")).toBeNull();
+  });
+
+  it("filters by case-insensitive substring of the description and updates the count", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "testusd" } });
+
+    expect(screen.getByText("01 AVAILABLE")).toBeDefined();
+    expect(screen.getAllByText("Issued asset payment").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Missing trustline")).toBeNull();
+
+    fireEvent.change(input, { target: { value: "RECIPIENT" } });
+    expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+  });
+
+  it("restores the full list when the input is cleared", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "xlm-payment" } });
+    expect(screen.getByText("01 AVAILABLE")).toBeDefined();
+
+    fireEvent.change(input, { target: { value: "" } });
+    expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+    expect(screen.getAllByText("XLM payment").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Issued asset payment").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Missing trustline").length).toBeGreaterThan(0);
+  });
+
+  it("restores the full list via the Clear search button", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "trustline" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect((input as HTMLInputElement).value).toBe("");
+    expect(screen.getByText("03 AVAILABLE")).toBeDefined();
+  });
+
+  it("shows a helpful message when nothing matches", async () => {
+    const input = await renderLoaded();
+    fireEvent.change(input, { target: { value: "no-such-scenario" } });
+
+    expect(screen.getByText("00 AVAILABLE")).toBeDefined();
+    expect(screen.getByText("No scenarios found")).toBeDefined();
+    expect(screen.getByText(/No scenarios match "no-such-scenario"/)).toBeDefined();
+  });
+});
+
+describe("Collapsible step sections in run report (#14)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockSearchParams = new URLSearchParams("?runId=run-123");
+    vi.spyOn(api, "listScenarios").mockResolvedValue(mockScenarios);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    mockSearchParams = new URLSearchParams();
+  });
+
+  it("renders a toggle per step with passing steps collapsed and failing steps expanded", async () => {
+    vi.spyOn(api, "getRun").mockResolvedValue(mixedOutcomeRun);
+
+    render(<Dashboard />);
+    await screen.findByText("PASSING STEP MESSAGE");
+
+    const passingToggle = screen.getByRole("button", { name: "Create Account" });
+    const failingToggle = screen.getByRole("button", { name: "Send Payment" });
+
+    expect(passingToggle).toHaveAttribute("aria-expanded", "false");
+    expect(failingToggle).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById(passingToggle.getAttribute("aria-controls")!)).toHaveAttribute("hidden");
+    expect(document.getElementById(failingToggle.getAttribute("aria-controls")!)).not.toHaveAttribute("hidden");
+  });
+
+  it("toggles a step on click", async () => {
+    vi.spyOn(api, "getRun").mockResolvedValue(mixedOutcomeRun);
+
+    render(<Dashboard />);
+    await screen.findByText("PASSING STEP MESSAGE");
+
+    const passingToggle = screen.getByRole("button", { name: "Create Account" });
+    const body = document.getElementById(passingToggle.getAttribute("aria-controls")!)!;
+
+    fireEvent.click(passingToggle);
+    expect(passingToggle).toHaveAttribute("aria-expanded", "true");
+    expect(body).not.toHaveAttribute("hidden");
+
+    fireEvent.click(passingToggle);
+    expect(passingToggle).toHaveAttribute("aria-expanded", "false");
+    expect(body).toHaveAttribute("hidden");
+  });
+
+  it("toggles a step with Enter and Space from the keyboard", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, "getRun").mockResolvedValue(mixedOutcomeRun);
+
+    render(<Dashboard />);
+    await screen.findByText("PASSING STEP MESSAGE");
+
+    const passingToggle = screen.getByRole("button", { name: "Create Account" });
+    passingToggle.focus();
+
+    await user.keyboard("{Enter}");
+    expect(passingToggle).toHaveAttribute("aria-expanded", "true");
+
+    await user.keyboard(" ");
+    expect(passingToggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("does not persist collapse state across page navigations", async () => {
+    vi.spyOn(api, "getRun").mockResolvedValue(mixedOutcomeRun);
+
+    const { unmount } = render(<Dashboard />);
+    await screen.findByText("PASSING STEP MESSAGE");
+    fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
+    expect(screen.getByRole("button", { name: "Create Account" })).toHaveAttribute("aria-expanded", "true");
+    unmount();
+
+    render(<Dashboard />);
+    await screen.findByText("PASSING STEP MESSAGE");
+    expect(screen.getByRole("button", { name: "Create Account" })).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("Stellar Expert transaction links (#15)", () => {
+  const txHash = "a1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff00";
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockSearchParams = new URLSearchParams("?runId=run-123");
+    vi.spyOn(api, "listScenarios").mockResolvedValue(mockScenarios);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    mockSearchParams = new URLSearchParams();
+  });
+
+  it("truncates hashes to the first and last 8 characters", () => {
+    expect(truncateHash(txHash)).toBe("a1b2c3d4…ddeeff00");
+    expect(truncateHash("short-hash")).toBe("short-hash");
+  });
+
+  it("renders each step transaction hash as a new-tab Stellar Expert Testnet link", async () => {
+    vi.spyOn(api, "getRun").mockResolvedValue({
+      ...mockRun,
+      status: "failed",
+      steps: [
+        { id: "send-payment", type: "payment", status: "failed", message: "TX STEP MESSAGE", transactionHash: txHash },
+      ],
+    });
+
+    render(<Dashboard />);
+    await screen.findByText("TX STEP MESSAGE");
+
+    const link = screen.getByRole("link", { name: /a1b2c3d4…ddeeff00/ });
+    expect(link).toHaveAttribute("href", `https://stellar.expert/explorer/testnet/tx/${txHash}`);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link).toHaveAttribute("title", txHash);
+    expect(link.textContent).toContain("a1b2c3d4…ddeeff00");
+    expect(link.textContent).not.toContain(txHash);
+  });
+});
+
+describe("Empty scenario catalogue state (#17)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it("explains the empty catalogue, links to the quick-start guide, and shows an illustration", async () => {
+    vi.spyOn(api, "listScenarios").mockResolvedValue([]);
+
+    render(<Dashboard />);
+
+    const emptyState = await screen.findByTestId("no-scenarios-empty-state");
+    expect(within(emptyState).getByText("No scenarios available")).toBeDefined();
+    expect(emptyState.textContent).toMatch(/backend/i);
+    const guideLink = within(emptyState).getByRole("link", { name: "Read the quick-start guide" });
+    expect(guideLink).toHaveAttribute("href", QUICK_START_URL);
+    expect(emptyState.querySelector("svg")).not.toBeNull();
+  });
+
+  it("keeps the filter-specific message when scenarios exist but none match", async () => {
+    vi.spyOn(api, "listScenarios").mockResolvedValue([mockScenarios[0]]);
+
+    render(<Dashboard />);
+    await screen.findAllByText("XLM payment");
+    fireEvent.click(screen.getByRole("tab", { name: "Trustlines" }));
+
+    expect(screen.getByText("No scenarios found")).toBeDefined();
+    expect(screen.queryByTestId("no-scenarios-empty-state")).toBeNull();
+  });
+});
+
+describe("Scenario list loading skeleton (#18)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it("shows pulsing skeleton rows and no real content while the fetch is pending", async () => {
+    let resolveScenarios: (items: api.ScenarioSummary[]) => void = () => {};
+    vi.spyOn(api, "listScenarios").mockReturnValue(
+      new Promise((resolve) => {
+        resolveScenarios = resolve;
+      }),
+    );
+
+    render(<Dashboard />);
+
+    const skeletons = screen.getAllByTestId("scenario-skeleton");
+    expect(skeletons).toHaveLength(SCENARIO_SKELETON_ROWS);
+    expect(SCENARIO_SKELETON_ROWS).toBe(5);
+    skeletons.forEach((row) => expect(row).toHaveClass("skeleton"));
+    expect(document.getElementById("scenario-grid")).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("XLM payment")).toBeNull();
+    expect(screen.queryByText("No scenarios available")).toBeNull();
+    expect(screen.queryByText("No scenarios found")).toBeNull();
+
+    await act(async () => {
+      resolveScenarios(mockScenarios);
+    });
+
+    expect(screen.queryAllByTestId("scenario-skeleton")).toHaveLength(0);
+    expect(screen.getAllByText("XLM payment").length).toBeGreaterThan(0);
   });
 });

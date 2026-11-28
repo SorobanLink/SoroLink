@@ -9,6 +9,7 @@ const emptySummary = (): RunSummary => ({
   stepsFailed: 0,
   assertionsPassed: 0,
   assertionsFailed: 0,
+  totalDurationMs: 0,
 });
 
 const SAFE_RUN_ERROR_CODES = new Set([
@@ -210,6 +211,15 @@ export class RunService {
     // Signal the runner's AbortController if it's still active.
     this.#cancelControllers.get(id)?.abort();
 
+    const completedAt = cancelled.completedAt ?? new Date(this.now()).toISOString();
+    const totalDurationMs = Math.max(0, Date.parse(completedAt) - Date.parse(cancelled.createdAt));
+    const steps = ensureStepsTiming(cancelled.steps, cancelled.createdAt, completedAt, totalDurationMs);
+    if (steps !== cancelled.steps) {
+      return this.store.update(id, {
+        steps,
+        summary: summarize(steps, cancelled.assertions, totalDurationMs),
+      });
+    }
     return cancelled;
   }
 
@@ -231,8 +241,9 @@ export class RunService {
           progressUpdates = progressUpdates.then(async () => {
             const current = await this.store.get(id);
             if (!current || current.status === "passed" || current.status === "failed" || current.status === "cancelled") return;
-            const steps = [...current.steps, step];
-            await this.store.update(id, { steps, summary: summarize(steps, current.assertions) });
+            const elapsedMs = Math.max(0, this.now() - startedAt);
+            const steps = [...current.steps, ensureStepTiming(step, new Date(this.now()).toISOString(), elapsedMs)];
+            await this.store.update(id, { steps, summary: summarize(steps, current.assertions, elapsedMs) });
           });
         },
         onAssertion: (assertion) => {
@@ -240,7 +251,8 @@ export class RunService {
             const current = await this.store.get(id);
             if (!current || current.status === "passed" || current.status === "failed" || current.status === "cancelled") return;
             const assertions = [...current.assertions, assertion];
-            await this.store.update(id, { assertions, summary: summarize(current.steps, assertions) });
+            const elapsedMs = Math.max(0, this.now() - startedAt);
+            await this.store.update(id, { assertions, summary: summarize(current.steps, assertions, elapsedMs) });
           });
         },
       });
@@ -260,13 +272,16 @@ export class RunService {
         return;
       }
 
-      const summary = summarize(result.steps, result.assertions);
+      const completedAt = new Date(this.now()).toISOString();
+      const totalDurationMs = Math.max(0, this.now() - startedAt);
+      const steps = ensureStepsTiming(result.steps, new Date(startedAt).toISOString(), completedAt, totalDurationMs);
+      const summary = summarize(steps, result.assertions, totalDurationMs);
       const passed = summary.stepsFailed === 0 && summary.assertionsFailed === 0;
       errorCode = passed ? undefined : "ASSERTION_FAILED";
       await this.store.update(id, {
         status: passed ? "passed" : "failed",
-        completedAt: new Date(this.now()).toISOString(),
-        steps: result.steps,
+        completedAt,
+        steps,
         assertions: result.assertions,
         summary,
         ...(!passed && {
@@ -289,7 +304,8 @@ export class RunService {
         return;
       }
 
-      const steps = currentRun?.steps ?? [];
+      const now = this.now();
+      const steps = ensureStepsTiming(currentRun?.steps ?? [], new Date(startedAt).toISOString(), new Date(now).toISOString(), Math.max(0, now - startedAt));
       const assertions = currentRun?.assertions ?? [];
       const normalizedError = normalizeError(error);
       errorCode = SAFE_RUN_ERROR_CODES.has(normalizedError.code) || isStableStellarErrorCode(normalizedError.code)
@@ -297,10 +313,10 @@ export class RunService {
         : "INTERNAL_ERROR";
       await this.store.update(id, {
         status: "failed",
-        completedAt: new Date(this.now()).toISOString(),
+        completedAt: new Date(now).toISOString(),
         steps,
         assertions,
-        summary: summarize(steps, assertions),
+        summary: summarize(steps, assertions, Math.max(0, now - startedAt)),
         error: normalizedError,
       });
     } finally {
@@ -327,13 +343,42 @@ export class RunService {
   }
 }
 
-function summarize(steps: RunReport["steps"], assertions: RunReport["assertions"]): RunSummary {
+function summarize(steps: RunReport["steps"], assertions: RunReport["assertions"], totalDurationMs: number): RunSummary {
   return {
     stepsPassed: steps.filter((step) => step.status === "passed").length,
     stepsFailed: steps.filter((step) => step.status === "failed").length,
     assertionsPassed: assertions.filter((item) => item.status === "passed").length,
     assertionsFailed: assertions.filter((item) => item.status === "failed").length,
+    totalDurationMs,
   };
+}
+
+function ensureStepTiming<T extends RunReport["steps"][number]>(
+  step: T,
+  fallbackStartedAt: string,
+  fallbackDurationMs: number,
+): T {
+  const startedAt = step.startedAt ?? fallbackStartedAt;
+  const durationMs = step.durationMs ?? fallbackDurationMs;
+  const completedAt = step.completedAt ?? (durationMs === 0
+    ? startedAt
+    : new Date(Date.parse(startedAt) + durationMs).toISOString());
+  return { ...step, startedAt, completedAt, durationMs };
+}
+
+function ensureStepsTiming(
+  steps: RunReport["steps"],
+  fallbackStartedAt: string,
+  fallbackCompletedAt: string,
+  fallbackDurationMs: number,
+): RunReport["steps"] {
+  return steps.map((step) => {
+    const normalized = ensureStepTiming(step, fallbackStartedAt, fallbackDurationMs);
+    return {
+      ...normalized,
+      completedAt: normalized.completedAt ?? fallbackCompletedAt,
+    };
+  });
 }
 
 function normalizeError(error: unknown): RunError {

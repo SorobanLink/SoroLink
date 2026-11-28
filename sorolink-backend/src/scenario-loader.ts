@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { ScenarioDefinition, ScenarioSummary, ValidatedScenario } from "./domain.js";
-import { SCENARIO_LIMITS, ScenarioValidationError, validateScenarioDefinition } from "./scenario-schema.js";
+import { SCENARIO_LIMITS, ScenarioValidationError, validateScenarioDefinition, validateScenarioSchemaOnly } from "./scenario-schema.js";
 
 const extensions = new Set([".json", ".yaml", ".yml"]);
 
@@ -30,6 +30,32 @@ export function prepareScenario(value: unknown): ValidatedScenario {
     throw new ScenarioValidationError([`definition exceeds ${SCENARIO_LIMITS.definitionBytes} bytes`]);
   }
   const definition = validateScenarioDefinition(value);
+  return { ...definition, contentHash: contentHash(definition) };
+}
+
+export function parseScenarioSchemaOnly(source: string, format: "json" | "yaml"): ValidatedScenario {
+  if (Buffer.byteLength(source, "utf8") > SCENARIO_LIMITS.definitionBytes) {
+    throw new ScenarioValidationError([`definition exceeds ${SCENARIO_LIMITS.definitionBytes} bytes`]);
+  }
+  let parsed: unknown;
+  try {
+    parsed = format === "json"
+      ? JSON.parse(source)
+      : parseYaml(source, { maxAliasCount: 0, uniqueKeys: true, prettyErrors: false });
+  } catch {
+    throw new ScenarioValidationError([`definition is not valid ${format.toUpperCase()}`]);
+  }
+  return prepareScenarioSchemaOnly(parsed);
+}
+
+export function prepareScenarioSchemaOnly(value: unknown): ValidatedScenario {
+  let serialized: string;
+  try { serialized = JSON.stringify(value); }
+  catch { throw new ScenarioValidationError(["definition must be JSON-serializable"]); }
+  if (Buffer.byteLength(serialized, "utf8") > SCENARIO_LIMITS.definitionBytes) {
+    throw new ScenarioValidationError([`definition exceeds ${SCENARIO_LIMITS.definitionBytes} bytes`]);
+  }
+  const definition = validateScenarioSchemaOnly(value);
   return { ...definition, contentHash: contentHash(definition) };
 }
 

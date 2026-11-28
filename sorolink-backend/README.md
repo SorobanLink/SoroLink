@@ -59,6 +59,7 @@ Rate-limited responses return HTTP 429 and include `Retry-After`.
 - `POST /api/v1/scenarios/validate`
 - `POST /api/v1/runs`
 - `POST /api/v1/runs/definitions`
+- `GET /api/v1/runs/export?format=json|csv` (requires persistent run history)
 - `GET /api/v1/runs/:runId`
 - `GET /api/v1/runs/:runId/report`
 - `GET /openapi.json`

@@ -4,12 +4,13 @@ import type { ScenarioVersionSummary } from "../published-scenarios.js";
 
 export interface ApiOperations {
   getHealth: { response: { status: "ok"; network: "testnet" } };
+  getMetrics: { response: string };
   getReadiness: { response: { status: "ready" | "unavailable"; network: "testnet"; database: "disabled" | "ready" | "unavailable"; services: { horizon: "ready" | "unavailable"; database: "disabled" | "ready" | "unavailable" } } };
   listScenarios: { response: { items: ScenarioSummary[] } };
   getScenario: { params: { scenarioId: string }; response: ValidatedScenario };
   /** Issue #70 — returns the canonical v1 scenario JSON Schema. */
   getScenarioSchemaV1: { response: Record<string, unknown> };
-  validateScenario: { body: ScenarioDefinition | string; response: { valid: true; scenarioId: string; scenarioVersion: string; schemaVersion: 1; contentHash: string } };
+  validateScenario: { body: ScenarioDefinition | string; query: { dryRun?: "true" | "false" }; response: { valid: true; scenarioId: string; scenarioVersion: string; schemaVersion: 1; contentHash: string; dryRun?: true } | { valid: false; errors: Array<{ code: string; path?: string; message: string }>; error: { code: string; message: string; requestId: string; details: string[]; errors: Array<{ code: string; path?: string; message: string }> } } };
   listScenarioVersions: { params: { scenarioId: string }; query: { limit?: number; cursor?: number }; response: { items: ScenarioVersionSummary[]; nextCursor?: number } };
   getScenarioVersion: { params: { scenarioId: string; version: number }; response: ValidatedScenario };
   exportScenarioVersion: { params: { scenarioId: string; version: number }; query: { format?: "json" | "yaml" }; response: string };
@@ -19,10 +20,10 @@ export interface ApiOperations {
   listRuns: { query: { limit?: number; offset?: number }; response: { items: RunReport[]; limit: number; offset: number; nextOffset?: number } };
   /** Issue #72 — Idempotency-Key header deduplicates within the retention window. */
   startDefinitionRun: { body: ScenarioDefinition | string; headers?: { "idempotency-key"?: string }; response: RunReport };
+  exportRuns: { query: { format?: "json" | "csv" }; response: RunReport[] | string };
   getRun: { params: { runId: string }; response: RunReport };
-  downloadRunReport: { params: { runId: string }; response: RunReport };
-  /** Issue #40 — transitions an active run to the cancelled terminal state. */
   cancelRun: { params: { runId: string }; response: RunReport };
+  downloadRunReport: { params: { runId: string }; response: RunReport };
 }
 
 export type ApiOperationId = keyof ApiOperations;

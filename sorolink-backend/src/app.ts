@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import type { AppConfig } from "./config.js";
 import type { LedgerGateway, RunReport, ValidatedScenario } from "./domain.js";
@@ -7,8 +8,8 @@ import { DatabaseUnavailableError } from "./database.js";
 import { openApiDocument } from "./openapi.js";
 import { FixedWindowRateLimiter } from "./rate-limiter.js";
 import { RunService, type RunLifecycleLogger } from "./run-service.js";
-import { InMemoryRunStore } from "./run-store.js";
-import { parseScenario, prepareScenario, canonicalJson } from "./scenario-loader.js";
+import { InMemoryRunStore, type RunExportRow } from "./run-store.js";
+import { parseScenario, prepareScenario, parseScenarioSchemaOnly, prepareScenarioSchemaOnly, canonicalJson } from "./scenario-loader.js";
 import { scenarioSchemaV1, ScenarioValidationError, semverVersion } from "./scenario-schema.js";
 import { createScenarioRegistry } from "./scenarios.js";
 import { StellarTestnetGateway } from "./stellar-gateway.js";
@@ -126,6 +127,18 @@ const exportQuerySchema = {
   type: "object",
   additionalProperties: false,
   properties: { format: { type: "string", enum: ["json", "yaml"] } },
+} as const;
+
+const runExportQuerySchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: { format: { type: "string", enum: ["json", "csv"], default: "json" } },
+} as const;
+
+const validateQuerySchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: { dryRun: { type: "string", enum: ["true", "false"] } },
 } as const;
 
 /** Maximum Idempotency-Key length accepted (issue #72). */
@@ -318,9 +331,19 @@ export function buildApp(options: BuildAppOptions): AppInstance {
     if (!exported) return reply.code(404).send(apiError("SCENARIO_VERSION_NOT_FOUND", "The requested scenario version is not available.", request.id));
     return reply.type(format === "json" ? "application/json" : "application/yaml").header("content-disposition", `attachment; filename=${request.params.scenarioId}-v${version}.${format}`).send(exported);
   });
-  app.post("/api/v1/scenarios/validate", async (request) => {
-    const scenario = submittedScenario(request.body, request.headers["content-type"]);
-    return { valid: true, scenarioId: scenario.id, scenarioVersion: scenario.version, schemaVersion: scenario.schemaVersion, contentHash: scenario.contentHash };
+  app.post<{ Querystring: { dryRun?: "true" | "false" } }>("/api/v1/scenarios/validate", { schema: { querystring: validateQuerySchema } }, async (request) => {
+    const dryRun = request.query.dryRun === "true";
+    const scenario = dryRun
+      ? submittedScenario(request.body, request.headers["content-type"])
+      : submittedScenarioSchemaOnly(request.body, request.headers["content-type"]);
+    return {
+      valid: true,
+      scenarioId: scenario.id,
+      scenarioVersion: scenario.version,
+      schemaVersion: scenario.schemaVersion,
+      contentHash: scenario.contentHash,
+      ...(dryRun ? { dryRun: true } : {}),
+    };
   });
 
   // ── Issue #71: exact version run creation + Issue #72: idempotency ────────
@@ -415,6 +438,27 @@ export function buildApp(options: BuildAppOptions): AppInstance {
     };
   });
 
+  // ── Issue #41: bulk run export (CSV/JSON) ───────────────────────────────────
+  app.get<{ Querystring: { format?: "json" | "csv" } }>("/api/v1/runs/export", { schema: { querystring: runExportQuerySchema } }, async (request, reply) => {
+    if (!persistence.runStore) {
+      return reply.code(501).send(apiError(
+        "PERSISTENCE_REQUIRED",
+        "Bulk run export requires persistent run history.",
+        request.id,
+      ));
+    }
+    const format = request.query.format ?? "json";
+    reply.header("content-disposition", `attachment; filename=sorolink-runs.${format}`);
+    if (format === "csv") {
+      reply.type("text/csv; charset=utf-8");
+      const stream = Readable.from(csvRunExport(persistence.runStore.exportRows()));
+      return reply.send(stream);
+    }
+    reply.type("application/json; charset=utf-8");
+    const stream = Readable.from(jsonRunExport(persistence.runStore.exportRows()));
+    return reply.send(stream);
+  });
+
   app.get<{ Params: { runId: string } }>("/api/v1/runs/:runId", async (request, reply) => {
     const run = await runs.get(request.params.runId);
     if (!run) return reply.code(404).send(apiError("RUN_NOT_FOUND", "The requested run does not exist.", request.id));
@@ -446,17 +490,39 @@ export function buildApp(options: BuildAppOptions): AppInstance {
     // Issue #81: a persisted scenario row failed its integrity re-check. Respond with a
     // sanitized availability error — never the underlying ScenarioIntegrityError detail.
     if (error instanceof ScenarioIntegrityError) return reply.code(503).send(apiError("CATALOGUE_INTEGRITY_ERROR", "The published scenario catalogue is temporarily unavailable.", request.id));
-    if (error instanceof ScenarioValidationError) return reply.code(400).send(apiError("INVALID_SCENARIO", error.message, request.id, error.issues));
+    if (error instanceof ScenarioValidationError) {
+      const base = apiError("INVALID_SCENARIO", error.message, request.id, error.issues);
+      if (isDryRunRequest(request.url)) {
+        const errors = error.issues.map((message) => {
+          const ajvPath = /^\/[^ ]+/.exec(message)?.[0];
+          return { code: "INVALID_SCENARIO", ...(ajvPath ? { path: ajvPath } : {}), message };
+        });
+        return reply.code(400).send({ valid: false, errors, error: { ...base.error, errors } });
+      }
+      return reply.code(400).send(base);
+    }
     if (isInvalidJsonBodyError(error)) {
       if (isScenarioDefinitionPath(request.url)) {
-        return reply.code(400).send(apiError("INVALID_SCENARIO", "Scenario definition is invalid.", request.id, ["definition is not valid JSON"]));
+        const base = apiError("INVALID_SCENARIO", "Scenario definition is invalid.", request.id, ["definition is not valid JSON"]);
+        if (isDryRunRequest(request.url)) {
+          const errors = [{ code: "INVALID_SCENARIO", message: "definition is not valid JSON" }];
+          return reply.code(400).send({ valid: false, errors, error: { ...base.error, errors } });
+        }
+        return reply.code(400).send(base);
       }
       return reply.code(400).send(apiError("INVALID_REQUEST", "The request body is invalid.", request.id, ["request body is not valid JSON"]));
     }
     if (hasStatus(error, 429)) return reply.code(429).send(apiError("RATE_LIMITED", "Request limit exceeded. Try again later.", request.id));
     if (hasStatus(error, 413)) return reply.code(413).send(apiError("INVALID_REQUEST", "The request body exceeded the allowed size.", request.id));
     if (isUnsupportedMediaTypeError(error)) return reply.code(415).send(apiError("UNSUPPORTED_MEDIA_TYPE", "The request content type is not supported.", request.id));
-    if (isValidationError(error)) return reply.code(400).send(apiError("INVALID_REQUEST", "The request did not match the API schema.", request.id));
+    if (isValidationError(error)) {
+      const base = apiError("INVALID_REQUEST", "The request did not match the API schema.", request.id);
+      if (isDryRunRequest(request.url)) {
+        const errors = [{ code: "INVALID_REQUEST", message: "The request did not match the API schema." }];
+        return reply.code(400).send({ valid: false, errors, error: { ...base.error, errors } });
+      }
+      return reply.code(400).send(base);
+    }
     request.log.error({ err: error }, "Unhandled request error");
     return reply.code(500).send(apiError("INTERNAL_ERROR", "The request could not be completed.", request.id));
   });
@@ -617,6 +683,37 @@ function withRetentionMetadata<T extends RunReport>(run: T, retentionMs: number)
   return { ...run, expiresAt };
 }
 
+async function* jsonRunExport(rows: AsyncIterable<RunExportRow>): AsyncGenerator<string> {
+  yield "[";
+  let first = true;
+  for await (const row of rows) {
+    if (!first) yield ",";
+    yield JSON.stringify(row.report);
+    first = false;
+  }
+  yield "]";
+}
+
+async function* csvRunExport(rows: AsyncIterable<RunExportRow>): AsyncGenerator<string> {
+  yield "runId,scenarioId,status,createdAt,completedAt,durationMs\r\n";
+  for await (const row of rows) {
+    const values = [
+      row.runId,
+      row.scenarioId,
+      row.status,
+      row.createdAt,
+      row.completedAt ?? "",
+      String(row.durationMs),
+    ];
+    yield `${values.map(csvField).join(",")}\r\n`;
+  }
+}
+
+function csvField(value: string): string {
+  if (!/[",\r\n]/.test(value)) return value;
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
 // ── Issue #77: unsupported content type ────────────────────────────────────
 function isUnsupportedMediaTypeError(error: unknown): boolean {
   return typeof error === "object" && error !== null &&
@@ -632,6 +729,15 @@ function submittedScenario(body: unknown, contentType: string | undefined): Vali
   }
   return prepareScenario(body);
 }
+
+function submittedScenarioSchemaOnly(body: unknown, contentType: string | undefined): ValidatedScenario {
+  const mediaType = contentType?.split(";", 1)[0]?.trim().toLowerCase();
+  if (mediaType === "application/yaml" || mediaType === "application/x-yaml" || mediaType === "text/yaml") {
+    if (typeof body !== "string") throw new ScenarioValidationError(["YAML request body must be text"]);
+    return parseScenarioSchemaOnly(body, "yaml");
+  }
+  return prepareScenarioSchemaOnly(body);
+}
 function apiError(code: string, message: string, requestId: string, details: string[] = []) { return { error: { code, message, requestId, details: details.slice(0, 50) } }; }
 function isValidationError(error: unknown): error is { validation: unknown } { return typeof error === "object" && error !== null && "validation" in error; }
 function hasStatus(error: unknown, status: number): boolean { return typeof error === "object" && error !== null && "statusCode" in error && error.statusCode === status; }
@@ -644,4 +750,10 @@ function isInvalidJsonBodyError(error: unknown): boolean {
 function isScenarioDefinitionPath(url: string): boolean {
   const path = url.split("?", 1)[0];
   return path === "/api/v1/scenarios/validate" || path === "/api/v1/runs/definitions";
+}
+
+function isDryRunRequest(url: string): boolean {
+  const [path, query = ""] = url.split("?", 2);
+  if (path !== "/api/v1/scenarios/validate") return false;
+  return new URLSearchParams(query).get("dryRun") === "true";
 }

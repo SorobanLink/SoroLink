@@ -37,6 +37,16 @@ describe("text memo validation and contract", () => {
     expect(() => prepareScenario(assertionInput)).toThrow(ScenarioValidationError);
   });
 
+  it.each(["\u0000", "\b", "\t", "\n", "\r", "\u001f", "\u007f", "\u0085", "\u2028", "\u2029"])("rejects control character memo %j", (memo) => {
+    const stepInput = definition();
+    if (stepInput.steps[0]?.type === "payment") stepInput.steps[0].memo = memo;
+    expect(() => prepareScenario(stepInput)).toThrow(ScenarioValidationError);
+
+    const assertionInput = definition();
+    assertionInput.assertions = [{ type: "transactionMemoEquals", step: "pay", memo }];
+    expect(() => prepareScenario(assertionInput)).toThrow(ScenarioValidationError);
+  });
+
   it("rejects memo objects, other memo types, unknown targets and non-payment targets", () => {
     for (const memo of [{ type: "text", value: "hello" }, 123, null]) {
       const input = definition() as any;
@@ -69,6 +79,8 @@ describe("text memo validation and contract", () => {
       for (const url of ["/api/v1/scenarios/validate", "/api/v1/runs/definitions"]) {
         const invalid = await app.inject({ method: "POST", url, payload: definition("😀".repeat(8)) });
         expect(invalid.statusCode).toBe(400);
+        const withControl = await app.inject({ method: "POST", url, payload: definition("safe\nmemo") });
+        expect(withControl.statusCode).toBe(400);
       }
       const valid = await app.inject({ method: "POST", url: "/api/v1/scenarios/validate", payload: definition("😀".repeat(7)) });
       expect(valid.statusCode).toBe(200);

@@ -48,6 +48,6 @@ function run(id: string, status: RunReport["status"], completedAt?: string): Run
     ...(completedAt && { completedAt }),
     steps: [],
     assertions: [],
-    summary: { stepsPassed: 0, stepsFailed: 0, assertionsPassed: 0, assertionsFailed: 0 },
+    summary: { stepsPassed: 0, stepsFailed: 0, assertionsPassed: 0, assertionsFailed: 0, totalDurationMs: 0 },
   };
 }

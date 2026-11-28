@@ -18,7 +18,7 @@ function report(id: string, terminal: boolean): RunReport {
     ...(terminal ? { completedAt: new Date(epoch).toISOString() } : {}),
     steps: [{ id: "payment", type: "payment", status: "passed", message: "synthetic" }],
     assertions: [{ type: "balanceEquals", status: "passed", expected: "1.0000000", actual: "1.0000000", message: "synthetic" }],
-    summary: { stepsPassed: 1, stepsFailed: 0, assertionsPassed: 1, assertionsFailed: 0 },
+    summary: { stepsPassed: 1, stepsFailed: 0, assertionsPassed: 1, assertionsFailed: 0, totalDurationMs: 0 },
   };
 }
 
