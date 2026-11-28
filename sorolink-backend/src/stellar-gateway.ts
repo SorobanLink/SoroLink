@@ -499,11 +499,11 @@ export class StellarTestnetGateway implements LedgerGateway {
     ReturnType<typeof Operation.manageSellOffer> |
     ReturnType<typeof Operation.pathPaymentStrictReceive> |
     ReturnType<typeof Operation.pathPaymentStrictSend>
-  >, memo?: string) {
+  >, memo?: string, baseFeeStroops?: number) {
     const buildAndSign = async () => {
       const account = await this.withHorizonRetry(() => this.#server.loadAccount(source.publicKey()), "account loading");
       const timebounds = await this.withHorizonRetry(() => this.#server.fetchTimebounds(60), "transaction submission");
-      const builder = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET, timebounds });
+      const builder = new TransactionBuilder(account, { fee: baseFeeStroops !== undefined ? String(baseFeeStroops) : BASE_FEE, networkPassphrase: Networks.TESTNET, timebounds });
       if (memo !== undefined) builder.addMemo(Memo.text(memo));
       for (const operation of operations) builder.addOperation(operation);
       const transaction = builder.build();
