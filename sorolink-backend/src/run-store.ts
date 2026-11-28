@@ -18,6 +18,16 @@ export interface RunStore {
   list(limit: number, offset: number): RunPage | Promise<RunPage>;
 }
 
+export interface RunExportRow {
+  runId: string;
+  scenarioId: string;
+  status: RunReport["status"];
+  createdAt: string;
+  completedAt?: string;
+  durationMs: number;
+  report: RunReport;
+}
+
 export class InMemoryRunStore implements RunStore {
   readonly #runs = new Map<string, RunReport>();
 
@@ -106,6 +116,8 @@ interface PersistedRunRow extends QueryResultRow {
   assertions: RunReport["assertions"];
   summary: RunReport["summary"];
   error: RunReport["error"] | null;
+  duration_ms: number | string | null;
+  created_at_cursor: string;
 }
 
 export class PostgresRunStore implements RunStore {
@@ -192,6 +204,44 @@ export class PostgresRunStore implements RunStore {
     if (result.rowCount !== 1) throw new OptimisticConcurrencyError(id);
     this.#versions.set(id, expectedVersion + 1);
     return structuredClone(updated);
+  }
+
+  async *exportRows(batchSize = 500): AsyncGenerator<RunExportRow> {
+    const pageSize = Math.max(1, Math.min(5_000, Math.trunc(batchSize)));
+    let lastCreatedAt: string | undefined;
+    let lastRunId: string | undefined;
+    for (;;) {
+      const result = await this.database.query<PersistedRunRow>(
+        `SELECT run_id, scenario_id, scenario_version, scenario_schema_version,
+          scenario_content_hash, network, status, version, created_at, completed_at,
+          duration_ms, steps, assertions, summary, error,
+          created_at::text AS created_at_cursor
+        FROM runs
+        WHERE scenario_id IS NOT NULL
+          AND (completed_at IS NULL OR completed_at > clock_timestamp() - ($1 * interval '1 millisecond'))
+          AND (($2::timestamptz IS NULL) OR (created_at, run_id) > ($2::timestamptz, $3::uuid))
+        ORDER BY created_at ASC, run_id ASC
+        LIMIT $4`,
+        [this.retentionMs, lastCreatedAt ?? null, lastRunId ?? null, pageSize],
+      );
+      if (result.rows.length === 0) return;
+      for (const row of result.rows) {
+        const report = reportFromRow(row);
+        const durationMs = Number(row.duration_ms ?? report.summary.totalDurationMs ?? 0);
+        yield {
+          runId: report.id,
+          scenarioId: report.scenarioId,
+          status: report.status,
+          createdAt: report.createdAt,
+          ...(report.completedAt && { completedAt: report.completedAt }),
+          durationMs,
+          report,
+        };
+        lastCreatedAt = row.created_at_cursor;
+        lastRunId = row.run_id;
+      }
+      if (result.rows.length < pageSize) return;
+    }
   }
 
   /**

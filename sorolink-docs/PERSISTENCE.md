@@ -169,7 +169,9 @@ checksums against the current migration files.
 
 Published scenario versions are durable in `published` mode. Run reports are
 in-memory by default; `RUN_PERSISTENCE_ENABLED=true` with `PERSISTENCE_MODE=published`
-stores reports in PostgreSQL. This rehearsal verifies database contents, not
+stores reports in PostgreSQL and enables the streamed
+`GET /api/v1/runs/export?format=json|csv` endpoint. Exports honor
+`RUN_RETENTION_MS`. This rehearsal verifies database contents, not
 durable execution, worker leases, or restart/resume behavior; that planned work is
 tracked in [#21](https://github.com/SoroLinkorg/SoroLink/issues/21).
 

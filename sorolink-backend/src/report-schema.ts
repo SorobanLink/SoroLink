@@ -38,7 +38,7 @@ export const runReportSchemaV1 = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["id", "type", "status", "message"],
+        required: ["id", "type", "status", "message", "startedAt", "durationMs"],
         properties: {
           id: { type: "string", minLength: 1 },
           type: { type: "string", minLength: 1 },
@@ -80,12 +80,13 @@ export const runReportSchemaV1 = {
     summary: {
       type: "object",
       additionalProperties: false,
-      required: ["stepsPassed", "stepsFailed", "assertionsPassed", "assertionsFailed"],
+      required: ["stepsPassed", "stepsFailed", "assertionsPassed", "assertionsFailed", "totalDurationMs"],
       properties: {
         stepsPassed: { type: "integer", minimum: 0 },
         stepsFailed: { type: "integer", minimum: 0 },
         assertionsPassed: { type: "integer", minimum: 0 },
         assertionsFailed: { type: "integer", minimum: 0 },
+        totalDurationMs: { type: "number", minimum: 0 },
       },
     },
     error: {

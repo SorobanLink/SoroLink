@@ -52,7 +52,7 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
       status: "passed",
       completedAt: new Date().toISOString(),
       steps: [{ id: "pay", type: "payment", status: "passed", message: "Confirmed." }],
-      summary: { stepsPassed: 1, stepsFailed: 0, assertionsPassed: 0, assertionsFailed: 0 },
+      summary: { stepsPassed: 1, stepsFailed: 0, assertionsPassed: 0, assertionsFailed: 0, totalDurationMs: 0 },
     });
     expect(updated).toMatchObject({ id: run.id, status: "passed", steps: [{ id: "pay", status: "passed" }] });
     expect(await store.get(run.id)).toEqual(updated);
@@ -100,7 +100,7 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
         completedAt: "2026-11-20T10:00:01.234Z",
         durationMs: 1_234,
       }],
-      summary: { stepsPassed: 1, stepsFailed: 0, assertionsPassed: 0, assertionsFailed: 0 },
+      summary: { stepsPassed: 1, stepsFailed: 0, assertionsPassed: 0, assertionsFailed: 0, totalDurationMs: 1_234 },
     });
     await store.create(run);
 
@@ -117,6 +117,48 @@ const postgresAvailable = process.platform !== "win32" || existsSync("C:/Windows
     });
     await store.create(run);
     expect(await store.get(run.id)).toBeUndefined();
+  });
+
+  it("streams retained reports as JSON and CSV exports", async () => {
+    const now = Date.now();
+    const fresh = report({
+      scenarioId: "export-retained",
+      status: "passed",
+      createdAt: new Date(now - 1_000).toISOString(),
+      completedAt: new Date(now).toISOString(),
+      summary: { stepsPassed: 0, stepsFailed: 0, assertionsPassed: 0, assertionsFailed: 0, totalDurationMs: 1_000 },
+    });
+    const expired = report({
+      scenarioId: "export-expired",
+      status: "passed",
+      createdAt: new Date(now - 180_000).toISOString(),
+      completedAt: new Date(now - 120_000).toISOString(),
+    });
+    await store.create(fresh);
+    await store.create(expired);
+
+    const app = buildApp({
+      config: databaseConfig(`postgres://postgres:test-password@127.0.0.1:${port}/postgres`),
+      ledger: { execute: async () => ({ steps: [], assertions: [] }) },
+    });
+    try {
+      await app.ready();
+      const jsonResponse = await app.inject({ method: "GET", url: "/api/v1/runs/export?format=json" });
+      expect(jsonResponse.statusCode).toBe(200);
+      expect(jsonResponse.headers["content-type"]).toContain("application/json");
+      const jsonRuns = jsonResponse.json() as RunReport[];
+      expect(jsonRuns.some((run) => run.id === fresh.id)).toBe(true);
+      expect(jsonRuns.some((run) => run.id === expired.id)).toBe(false);
+
+      const csvResponse = await app.inject({ method: "GET", url: "/api/v1/runs/export?format=csv" });
+      expect(csvResponse.statusCode).toBe(200);
+      expect(csvResponse.headers["content-type"]).toContain("text/csv");
+      expect(csvResponse.body.split("\r\n")[0]).toBe("runId,scenarioId,status,createdAt,completedAt,durationMs");
+      expect(csvResponse.body).toContain(`${fresh.id},export-retained,passed,`);
+      expect(csvResponse.body).not.toContain(expired.id);
+    } finally {
+      await app.close();
+    }
   });
 
   it("serves persisted run history after rebuilding the API app", async () => {
@@ -258,7 +300,7 @@ function report(overrides: Partial<RunReport> = {}): RunReport {
     createdAt: new Date().toISOString(),
     steps: [],
     assertions: [],
-    summary: { stepsPassed: 0, stepsFailed: 0, assertionsPassed: 0, assertionsFailed: 0 },
+    summary: { stepsPassed: 0, stepsFailed: 0, assertionsPassed: 0, assertionsFailed: 0, totalDurationMs: 0 },
     ...overrides,
   };
 }

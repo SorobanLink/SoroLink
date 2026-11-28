@@ -115,6 +115,7 @@ export interface RunSummary {
   stepsFailed: number;
   assertionsPassed: number;
   assertionsFailed: number;
+  totalDurationMs: number;
 }
 
 export interface RunReport {

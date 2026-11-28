@@ -134,6 +134,17 @@ Scenario Schema v1 definition, POST the raw JSON or YAML document to
 Returns the final sanitized report as a JSON attachment. An unfinished run
 returns `409`.
 
+## Export run history
+
+### `GET /api/v1/runs/export?format=json|csv`
+
+Streams all retained reports from persistent run history. The `format` query is
+optional and defaults to `json`. JSON is an array of complete run reports. CSV
+has the columns `runId`, `scenarioId`, `status`, `createdAt`, `completedAt`,
+and `durationMs`. Expired reports are omitted according to `RUN_RETENTION_MS`.
+This endpoint requires `RUN_PERSISTENCE_ENABLED=true` with
+`PERSISTENCE_MODE=published`; otherwise it returns `501 PERSISTENCE_REQUIRED`.
+
 ## Error envelope
 
 ```json
