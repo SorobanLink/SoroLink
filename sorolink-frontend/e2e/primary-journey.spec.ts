@@ -283,7 +283,7 @@ test.describe("Loading States", () => {
     // Verify skeletons and aria-busy while loading
     const grid = page.locator(".scenario-grid");
     await expect(grid).toHaveAttribute("aria-busy", "true");
-    await expect(page.locator(".scenario-card.skeleton")).toHaveCount(3);
+    await expect(page.locator(".scenario-card.skeleton")).toHaveCount(5);
 
     // Resolve scenario request
     fulfillScenarios();
