@@ -1,25 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
-export type AppInstance = FastifyInstance & { runs: RunService };
-
-export async function closeAfterDrain(app: { close: () => Promise<void>; runs: Pick<AppInstance["runs"], "drain"> }, timeoutMs: number): Promise<void> {
-  const draining = app.runs.drain();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<void>((resolve) => {
-    timer = setTimeout(resolve, timeoutMs);
-    timer.unref();
-  });
-  try {
-    await Promise.race([draining, deadline]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-  await app.close();
-}
 import type { AppConfig } from "./config.js";
 import type { LedgerGateway, RunReport, ValidatedScenario } from "./domain.js";
 import { RunCapacityError, RunAlreadyTerminalError, RunNotFoundError } from "./errors.js";
-import { DatabaseUnavailableError } from "./database.js";import { openApiDocument } from "./openapi.js";
+import { DatabaseUnavailableError } from "./database.js";
+import { openApiDocument } from "./openapi.js";
 import { FixedWindowRateLimiter } from "./rate-limiter.js";
 import { RunService, type RunLifecycleLogger } from "./run-service.js";
 import { InMemoryRunStore } from "./run-store.js";
@@ -30,8 +15,63 @@ import { StellarTestnetGateway } from "./stellar-gateway.js";
 import { PersistenceCoordinator } from "./persistence.js";
 import { ScenarioIntegrityError } from "./published-scenarios.js";
 import { IdempotencyStore } from "./idempotency-store.js";
+import { CircuitBreaker } from "./circuit-breaker.js";
 
-interface BuildAppOptions { config: AppConfig; ledger?: LedgerGateway; logger?: boolean; runLogger?: RunLifecycleLogger; clock?: () => number; }
+export type AppInstance = FastifyInstance & { runs: RunService; horizonCircuit: CircuitBreaker };
+
+export interface DrainableApp {
+  close: () => Promise<void>;
+  runs: Pick<RunService, "drain"> & Partial<Pick<RunService, "cancelActive">>;
+}
+
+export interface DrainResult {
+  /** True when every active run finished before the drain deadline. */
+  drained: boolean;
+  /** Runs force-cancelled with SERVER_SHUTDOWN after the deadline expired. */
+  cancelledRuns: number;
+}
+
+/**
+ * Graceful shutdown:
+ *   1. RunService enters draining mode; the onRequest gate now rejects every
+ *      new request (except /health) with 503 SERVER_SHUTTING_DOWN.
+ *   2. Active runs may complete, bounded by `timeoutMs`.
+ *   3. Runs still active at the deadline are marked cancelled (SERVER_SHUTDOWN).
+ *   4. Fastify closes: the listener stops, in-flight requests finish, idle
+ *      keep-alive sockets close, and onClose hooks release the database pool.
+ */
+export async function closeAfterDrain(app: DrainableApp, timeoutMs: number): Promise<DrainResult> {
+  const draining = app.runs.drain().then(() => true);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+    timer.unref?.();
+  });
+  let drained: boolean;
+  try {
+    drained = await Promise.race([draining, deadline]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+  const cancelledRuns = !drained && app.runs.cancelActive ? await app.runs.cancelActive() : 0;
+  await app.close();
+  return { drained, cancelledRuns };
+}
+
+export type ReadinessCheck = (signal: AbortSignal) => Promise<unknown>;
+type ServiceStatus = "ready" | "unavailable" | "disabled";
+
+interface BuildAppOptions {
+  config: AppConfig;
+  ledger?: LedgerGateway;
+  logger?: boolean;
+  runLogger?: RunLifecycleLogger;
+  clock?: () => number;
+  /** Shared Horizon circuit breaker; one is created from config when omitted. */
+  horizonCircuit?: CircuitBreaker;
+  /** Overrides for /ready dependency probes (used by tests to avoid real I/O). */
+  readinessChecks?: { horizon?: ReadinessCheck; database?: ReadinessCheck };
+}
 
 const runBodySchema = {
   type: "object", additionalProperties: false, required: ["scenarioId"],
@@ -136,6 +176,14 @@ export function buildApp(options: BuildAppOptions): AppInstance {
     IDEMPOTENCY_RETENTION_MS,
   );
 
+  // Graceful shutdown gate: once draining starts, refuse new work. /health
+  // stays answerable so orchestrators see the process as alive while it drains.
+  app.addHook("onRequest", async (request, reply) => {
+    if (!runs.draining || request.url.split("?")[0] === "/health") return;
+    reply.header("connection", "close");
+    return reply.code(503).send(apiError("SERVER_SHUTTING_DOWN", "The server is shutting down and is not accepting new requests.", request.id));
+  });
+
   app.addHook("onRequest", async (request, reply) => {
     const path = request.url.split("?")[0];
     // Issue #85: /health is a cheap liveness probe that must stay reachable
@@ -149,8 +197,13 @@ export function buildApp(options: BuildAppOptions): AppInstance {
     reply.header("x-ratelimit-limit", limit).header("x-ratelimit-remaining", result.remaining);
     if (!result.allowed) { reply.header("retry-after", result.retryAfterSeconds); return reply.code(429).send(apiError("RATE_LIMITED", "Request limit exceeded. Try again later.", request.id)); }
   });
+  const horizonCircuit = options.horizonCircuit ?? new CircuitBreaker("Horizon", {
+    ...(options.config.horizonCircuitCooldownMs !== undefined && { cooldownMs: options.config.horizonCircuitCooldownMs }),
+    now: clock,
+  });
   const ledger = options.ledger ?? new StellarTestnetGateway(options.config.horizonUrl, options.config.friendbotUrl, {
     fundingConcurrency: options.config.maxConcurrentFriendbotRequests,
+    horizonCircuitBreaker: horizonCircuit,
   });
   const runs = new RunService(persistence.runStore ?? new InMemoryRunStore(options.config.maxStoredRuns, options.config.runRetentionMs, clock), ledger, {
     maxConcurrentRuns: options.config.maxConcurrentRuns, runTimeoutMs: options.config.runTimeoutMs, stepTimeoutMs: options.config.stepTimeoutMs,
@@ -182,6 +235,7 @@ export function buildApp(options: BuildAppOptions): AppInstance {
         "# HELP sorolink_run_duration_seconds_count Number of terminal runs included in duration.",
         "# TYPE sorolink_run_duration_seconds_count counter",
         `sorolink_run_duration_seconds_count ${metrics.runDuration.count}`,
+        ...circuitMetrics(horizonCircuit),
         "",
       ].join("\n");
       return reply
@@ -190,10 +244,23 @@ export function buildApp(options: BuildAppOptions): AppInstance {
         .send(body);
     });
   }
+  // Readiness: verify each dependency, unlike /health (pure liveness).
+  const readinessTimeoutMs = options.config.readinessTimeoutMs ?? 3_000;
+  const horizonCheck: ReadinessCheck = options.readinessChecks?.horizon ?? (async (signal) => {
+    const response = await fetch(new URL("/fee_stats", options.config.horizonUrl), { signal });
+    if (!response.ok) throw new Error(`Horizon readiness probe returned ${response.status}`);
+  });
+  const databaseCheck: ReadinessCheck | undefined = options.readinessChecks?.database ?? (persistence.database
+    ? async () => { if (!(await persistence.check())) throw new Error("Database readiness probe failed"); }
+    : undefined);
   app.get("/ready", async (_request, reply) => {
-    const ready = await persistence.check();
-    if (!ready) return reply.code(503).send({ status: "unavailable", network: "testnet", database: "unavailable" });
-    return { status: "ready", network: "testnet", database: persistence.state === "disabled" ? "disabled" : "ready" };
+    const [horizon, database] = await Promise.all([
+      probe(horizonCheck, readinessTimeoutMs),
+      databaseCheck ? probe(databaseCheck, readinessTimeoutMs) : Promise.resolve<ServiceStatus>("disabled"),
+    ]);
+    const ready = horizon === "ready" && database !== "unavailable";
+    const body = { status: ready ? "ready" : "unavailable", network: "testnet", database, services: { horizon, database } };
+    return ready ? body : reply.code(503).send(body);
   });
   app.get("/openapi.json", async () => openApiDocument());
 
@@ -395,7 +462,40 @@ export function buildApp(options: BuildAppOptions): AppInstance {
   });
   const instance = app as unknown as AppInstance;
   instance.runs = runs;
+  instance.horizonCircuit = horizonCircuit;
   return instance;
+}
+
+async function probe(check: ReadinessCheck, timeoutMs: number): Promise<ServiceStatus> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => { controller.abort(); reject(new Error("Readiness probe timed out")); }, timeoutMs);
+    timer.unref?.();
+  });
+  try {
+    await Promise.race([check(controller.signal), timeout]);
+    return "ready";
+  } catch {
+    return "unavailable";
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function circuitMetrics(breaker: CircuitBreaker): string[] {
+  const snapshot = breaker.snapshot();
+  return [
+    "# HELP sorolink_horizon_circuit_state Horizon circuit breaker state (1 for the current state).",
+    "# TYPE sorolink_horizon_circuit_state gauge",
+    ...(["closed", "open", "half_open"] as const).map((state) => `sorolink_horizon_circuit_state{state="${state}"} ${snapshot.state === state ? 1 : 0}`),
+    "# HELP sorolink_horizon_circuit_opens_total Times the Horizon circuit has opened.",
+    "# TYPE sorolink_horizon_circuit_opens_total counter",
+    `sorolink_horizon_circuit_opens_total ${snapshot.opens}`,
+    "# HELP sorolink_horizon_circuit_rejected_calls_total Horizon calls fast-failed with CIRCUIT_OPEN.",
+    "# TYPE sorolink_horizon_circuit_rejected_calls_total counter",
+    `sorolink_horizon_circuit_rejected_calls_total ${snapshot.rejectedCalls}`,
+  ];
 }
 
 // ── Issue #69: deterministic ETag for catalogue responses ─────────────────

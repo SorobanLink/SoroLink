@@ -1,0 +1,47 @@
+schemaVersion: 1
+id: clawback-issued-asset
+version: 1
+name: Issuer clawback of issued asset
+description: Issuer enables AUTH_CLAWBACK_ENABLED_FLAG, sends assets to a recipient, then claws them back and verifies the recipient balance returns to zero.
+network: testnet
+accounts:
+  - id: issuer
+    generate: true
+    fund: true
+  - id: recipient
+    generate: true
+    fund: true
+assets:
+  - id: clawtoken
+    type: issued
+    code: CLW
+    issuer: issuer
+steps:
+  - id: issuer-enables-clawback
+    type: setOptions
+    account: issuer
+    setFlags: AUTH_CLAWBACK_ENABLED_FLAG
+  - id: recipient-trusts-clawtoken
+    type: changeTrust
+    account: recipient
+    asset: clawtoken
+    limit: "1000"
+  - id: issuer-sends-tokens
+    type: payment
+    from: issuer
+    to: recipient
+    asset: clawtoken
+    amount: "50"
+  - id: issuer-claws-back
+    type: clawback
+    from: issuer
+    account: recipient
+    asset: clawtoken
+    amount: "50"
+assertions:
+  - type: balanceEquals
+    account: recipient
+    asset: clawtoken
+    amount: "0"
+  - type: stepSucceeded
+    step: issuer-claws-back

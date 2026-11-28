@@ -9,6 +9,8 @@ import { RunService, type RunLifecycleLog } from "../src/run-service.js";
 import { InMemoryRunStore } from "../src/run-store.js";
 import { createScenarioRegistry } from "../src/scenarios.js";
 import { completeScenario } from "./fixtures.js";
+import { CircuitBreaker } from "../src/circuit-breaker.js";
+import type { ReadinessCheck } from "../src/app.js";
 
 const config: AppConfig = {
   host: "127.0.0.1",
@@ -49,10 +51,15 @@ function createApp(options: {
   ledger?: LedgerGateway;
   clock?: () => number;
   runLogger?: { info(fields: RunLifecycleLog): void };
+  readinessChecks?: { horizon?: ReadinessCheck; database?: ReadinessCheck };
+  horizonCircuit?: CircuitBreaker;
 } = {}) {
   const app = buildApp({
     config: options.config ?? config,
     ledger: options.ledger ?? ledger,
+    // Never hit the real Horizon from unit tests.
+    readinessChecks: { horizon: async () => {}, ...options.readinessChecks },
+    ...(options.horizonCircuit ? { horizonCircuit: options.horizonCircuit } : {}),
     ...(options.clock ? { clock: options.clock } : {}),
     ...(options.runLogger ? { runLogger: options.runLogger } : {}),
   });
@@ -91,6 +98,9 @@ describe("SoroLink API", () => {
       'outcome="cancelled"',
       'reason="capacity"',
       'reason="draining"',
+      'state="closed"',
+      'state="open"',
+      'state="half_open"',
     ]);
     expect(response.body).not.toContain("test-scenario");
     expect(response.body).not.toContain("account");
@@ -138,7 +148,113 @@ describe("SoroLink API", () => {
   it("reports explicitly disabled persistence readiness on the unchanged P1 path", async () => {
     const response = await createApp().inject({ method: "GET", url: "/ready" });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: "ready", network: "testnet", database: "disabled" });
+    expect(response.json()).toEqual({
+      status: "ready",
+      network: "testnet",
+      database: "disabled",
+      services: { horizon: "ready", database: "disabled" },
+    });
+  });
+
+  describe("readiness checks", () => {
+    it("probes Horizon /fee_stats by default and reports it ready", async () => {
+      const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+      try {
+        const app = buildApp({ config, ledger });
+        apps.push(app);
+        const response = await app.inject({ method: "GET", url: "/ready" });
+
+        expect(response.statusCode).toBe(200);
+        expect(String(fetchMock.mock.calls[0]![0])).toBe("https://horizon-testnet.stellar.org/fee_stats");
+        expect(response.json().services).toEqual({ horizon: "ready", database: "disabled" });
+      } finally {
+        fetchMock.mockRestore();
+      }
+    });
+
+    it("returns 503 when the Horizon probe responds with an error status", async () => {
+      const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status: 503 }));
+      try {
+        const app = buildApp({ config, ledger });
+        apps.push(app);
+        const response = await app.inject({ method: "GET", url: "/ready" });
+
+        expect(response.statusCode).toBe(503);
+        expect(response.json().services.horizon).toBe("unavailable");
+      } finally {
+        fetchMock.mockRestore();
+      }
+    });
+
+    it("returns 503 with individual statuses when Horizon is unreachable", async () => {
+      const app = createApp({ readinessChecks: { horizon: async () => { throw new Error("ECONNREFUSED"); } } });
+      const response = await app.inject({ method: "GET", url: "/ready" });
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({
+        status: "unavailable",
+        network: "testnet",
+        database: "disabled",
+        services: { horizon: "unavailable", database: "disabled" },
+      });
+    });
+
+    it("returns 503 when a Horizon probe exceeds the readiness timeout", async () => {
+      const app = createApp({
+        config: { ...config, readinessTimeoutMs: 20 },
+        readinessChecks: { horizon: () => new Promise(() => {}) },
+      });
+      const response = await app.inject({ method: "GET", url: "/ready" });
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json().services.horizon).toBe("unavailable");
+    });
+
+    it("runs the database probe in persistence mode and reports it ready", async () => {
+      const selectOne = vi.fn(async () => {});
+      const app = createApp({ readinessChecks: { database: selectOne } });
+      const response = await app.inject({ method: "GET", url: "/ready" });
+
+      expect(response.statusCode).toBe(200);
+      expect(selectOne).toHaveBeenCalledOnce();
+      expect(response.json()).toMatchObject({ status: "ready", database: "ready", services: { horizon: "ready", database: "ready" } });
+    });
+
+    it("returns 503 when the database cannot accept queries", async () => {
+      const app = createApp({ readinessChecks: { database: async () => { throw new DatabaseUnavailableError(); } } });
+      const response = await app.inject({ method: "GET", url: "/ready" });
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toMatchObject({ status: "unavailable", services: { horizon: "ready", database: "unavailable" } });
+    });
+
+    it("keeps /health a dependency-free liveness check", async () => {
+      const horizon = vi.fn(async () => { throw new Error("down"); });
+      const database = vi.fn(async () => { throw new Error("down"); });
+      const app = createApp({ readinessChecks: { horizon, database } });
+      const response = await app.inject({ method: "GET", url: "/health" });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ status: "ok", network: "testnet" });
+      expect(horizon).not.toHaveBeenCalled();
+      expect(database).not.toHaveBeenCalled();
+    });
+  });
+
+  it("exposes the Horizon circuit state in /metrics", async () => {
+    let now = 0;
+    const breaker = new CircuitBreaker("Horizon", { now: () => now });
+    const app = createApp({ config: { ...config, metricsEnabled: true }, horizonCircuit: breaker });
+    for (let i = 0; i < 5; i += 1) await breaker.execute(() => Promise.reject(new Error("down"))).catch(() => {});
+
+    let body = (await app.inject({ method: "GET", url: "/metrics" })).body;
+    expect(body).toContain('sorolink_horizon_circuit_state{state="open"} 1');
+    expect(body).toContain('sorolink_horizon_circuit_state{state="closed"} 0');
+    expect(body).toContain("sorolink_horizon_circuit_opens_total 1");
+
+    now += 30_000;
+    body = (await app.inject({ method: "GET", url: "/metrics" })).body;
+    expect(body).toContain('sorolink_horizon_circuit_state{state="half_open"} 1');
   });
 
   it("fails closed for version history when published persistence is disabled", async () => {
