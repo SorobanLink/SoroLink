@@ -12,6 +12,16 @@ export class DatabaseUnavailableError extends Error {
   constructor() { super("Database operation unavailable"); this.name = "DatabaseUnavailableError"; }
 }
 
+export class DatabasePoolExhaustedError extends Error {
+  readonly code = "DATABASE_POOL_EXHAUSTED";
+  constructor() { super("Database connection pool exhausted"); this.name = "DatabasePoolExhaustedError"; }
+}
+
+export class DatabaseTimeoutError extends Error {
+  readonly code = "DATABASE_TIMEOUT";
+  constructor() { super("Database query timed out"); this.name = "DatabaseTimeoutError"; }
+}
+
 export interface Queryable {
   query<T extends QueryResultRow = QueryResultRow>(text: string, values?: readonly unknown[]): Promise<{ rows: T[]; rowCount: number | null }>;
 }
@@ -169,6 +179,10 @@ async function migrationFiles(directory: string) {
 
 function classifyDatabaseError(error: unknown): Error {
   if (error instanceof Error && (/checksum mismatch/.test(error.message) || "code" in error && typeof error.code === "string" && !isAvailabilityCode(error.code))) return error;
+  if (error instanceof Error && "code" in error) {
+    if ((error as { code?: unknown }).code === "53300") return new DatabasePoolExhaustedError();
+    if ((error as { code?: unknown }).code === "57014") return new DatabaseTimeoutError();
+  }
   return new DatabaseUnavailableError();
 }
 
