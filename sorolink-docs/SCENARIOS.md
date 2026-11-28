@@ -6,7 +6,7 @@ no executable code or credentials and are validated before Testnet access.
 
 ## Bundled Scenarios
 
-ESURE includes 18 bundled scenarios for Testnet integration testing:
+ESURE includes 20 bundled scenarios for Testnet integration testing:
 
 | Scenario ID | Purpose | Expected Result |
 | --- | --- | --- |
@@ -29,6 +29,8 @@ ESURE includes 18 bundled scenarios for Testnet integration testing:
 | `minimum-issued-asset-payment` | Transfer the smallest issued-asset unit between holders | Pass; sender and recipient balances are exact |
 | `path-payment` | Create EUR/XLM and USDC/EUR offers and send XLM through EUR to deliver USDC | Pass on Testnet |
 | `recovery-after-expected-failure` | Attempt payment without trustline (fails), establish trustline, retry (succeeds) | Controlled `op_no_trust` failure then Pass |
+| `create-offer` | Create matching USDC/XLM sell and buy offers and verify trade execution and balance changes | Pass on Testnet |
+| `clawback-issued-asset` | Issuer enables AUTH_CLAWBACK_ENABLED_FLAG, sends CLW tokens, claws them back; recipient balance returns to zero | Pass on Testnet |
 
 These scenarios demonstrate XLM transfers, issued assets, trustline management,
 expected failure handling, and multi-step transaction flows that Stellar developers

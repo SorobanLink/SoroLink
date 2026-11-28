@@ -1,0 +1,63 @@
+schemaVersion: 1
+id: create-offer
+version: 1
+name: DEX offer creation and trade
+description: Create matching sell offers on the Stellar DEX and verify trade execution and balance changes.
+network: testnet
+accounts:
+  - id: seller
+    generate: true
+    fund: true
+  - id: buyer
+    generate: true
+    fund: true
+  - id: issuer
+    generate: true
+    fund: true
+assets:
+  - id: xlm
+    type: native
+  - id: usdc
+    type: issued
+    code: USDC
+    issuer: issuer
+steps:
+  - id: seller-trusts-usdc
+    type: changeTrust
+    account: seller
+    asset: usdc
+    limit: "1000"
+  - id: buyer-trusts-usdc
+    type: changeTrust
+    account: buyer
+    asset: usdc
+    limit: "1000"
+  - id: issuer-funds-seller
+    type: payment
+    from: issuer
+    to: seller
+    asset: usdc
+    amount: "100"
+  - id: seller-places-offer
+    type: manageSellOffer
+    account: seller
+    sellingAsset: usdc
+    buyingAsset: xlm
+    amount: "50"
+    price: "1"
+  - id: buyer-crosses-offer
+    type: manageBuyOffer
+    account: buyer
+    sellingAsset: xlm
+    buyingAsset: usdc
+    buyAmount: "50"
+    price: "1"
+assertions:
+  - type: balanceChangedBy
+    account: buyer
+    asset: usdc
+    amount: "50"
+  - type: stepSucceeded
+    step: seller-places-offer
+  - type: stepSucceeded
+    step: buyer-crosses-offer
